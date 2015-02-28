@@ -66,3 +66,7 @@ class Hacrf(object):
     def predict(self):
         pass
 
+
+class _Model(object):
+    """ The actual model that implements the inference routines. """
+    def __init__(self, state_machine,
