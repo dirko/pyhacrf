@@ -36,13 +36,21 @@ class Hacrf(object):
         self : object
             Returns self.
         """
-        n_classes = len(set(y))
+        classes = dict((target_name, target_number) for target_name, target_number in enumerate(set(y)))
         n_points = len(y)
         if len(X) != n_points:
             raise Exception('Number of training points should be the same as training labels.')
 
+        # Default state machine
+        state_machine = [(0, 0, (1, 1)),  # Match
+                         (0, 0, (0, 1)),  # Insertion
+                         (0, 0, (1, 0))]  # Deletion
+
+        # Initialize the parameters given the state machine, features, and target classes.
+        self.parameters = self._initialize_parameters(state_machine, X[0].shape[2], classes)
+
         # Create a new model object for each training example
-        models = [_Model(state_machine, n_classes, x, ty) for x, ty in zip(X, y)]
+        models = [_Model(state_machine, classes, x, ty) for x, ty in zip(X, y)]
 
         derivative = np.zeros(self.parameters.shape)
 
@@ -51,8 +59,7 @@ class Hacrf(object):
             ll = 0.0  # Log likelihood
             # TODO: Embarrassingly parallel
             for model in models:
-                model.set_parameters(parameters)
-                model.forward_backward()
+                model.forward_backward(parameters)
                 model.add_derivative(derivative)
                 ll += model.ll
             return -ll, -derivative
@@ -66,7 +73,23 @@ class Hacrf(object):
     def predict(self):
         pass
 
+    @staticmethod
+    def _initialize_parameters(state_machine, n_features, classes):
+        """ Helper to create initial parameter vector with the correct shape. """
+        n_states = len(set(state0 for state0, state1, transition in state_machine).
+                       union(state1 for state0, state1, transition in state_machine))
+        n_transitions = len(set(transition for state0, state1, transition in state_machine))
+        n_classes = len(classes.keys())
+        return np.zeros((n_features, n_states + n_transitions, n_classes))
+
 
 class _Model(object):
     """ The actual model that implements the inference routines. """
-    def __init__(self, state_machine,
+    def __init__(self, state_machine, classes, x, y):
+        self.state_machine = state_machine
+        self.classes = classes
+        self.x = x
+        self.y = y
+
+    def forward_backward(self, parameters):
+        """ Run the forward backward algorithm with the given parameters. """
