@@ -5,13 +5,16 @@ import unittest
 from numpy.testing import assert_array_almost_equal
 import numpy as np
 from pyhacrf import Hacrf
+from pyhacrf import _Model
 
 
 class TestHacrf(unittest.TestCase):
     def test_initialize_parameters(self):
-        state_machine = [(0, 0, (1, 1)),
-                         (0, 1, (0, 1)),
-                         (0, 0, (1, 0))]
+        states = [0, 1]
+        transitions = [(0, 0, (1, 1)),
+                       (0, 1, (0, 1)),
+                       (0, 0, (1, 0))]
+        state_machine = (states, transitions)
         X = [np.zeros((6, 7, 3))]
         classes = {'y1': 0, 'y2': 1}
 
@@ -19,6 +22,33 @@ class TestHacrf(unittest.TestCase):
         expected_parameter_shape = (3, 5, 2)
         self.assertEqual(actual_parameters.shape, expected_parameter_shape)
 
+
+class TestModel(unittest.TestCase):
+    def test_build_lattice(self):
+        states = [0, 1, 3]
+        transitions = [(0, 0, (1, 1)),
+                       (0, 1, (0, 1)),
+                       (0, 0, (1, 0)),
+                       (0, 3, lambda i, j, k: 0, 2)]
+        state_machine = (states, transitions)
+        x = np.zeros((2, 3, 9))
+        #
+        # 1.  .  .
+        #
+        # 0.  .  .
+        #  0  1  2
+        actual_lattice = _Model._build_lattice(x, state_machine)
+        expected_lattice = [(0, 0, 0),
+                            (0, 0, 1),
+                            (0, 0, 3),
+                            (0, 0, 1, 1, 0, 0),
+                            (0, 0, 0, 1, 0, 1),
+                            (0, 0, 1, 0, 0, 0),
+                            (0, 0, 0),
+                            (0, 0, 1),
+                            (0, 0, 3),
+
+                            ]
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,5 +1,7 @@
 # Some design ideas
 
+Some thoughts to explore how to put this program together.
+
 ## General - memory vs computation
 To speed training up as much as possible, I think a lattice must be constructed for each training example and then
 kept in memory. During training as much time as possible must then be spent on the calculations (obviously).
@@ -68,5 +70,42 @@ Each edge is then (i0, j0, i1, j1, s0, e) - where e is the edge 'type'.
 
 Every node and every edge is associated with a forward probability $alpha$.
 
-## TODO: Dynamic programming/storing edge information
+## Dynamic programming/storing edge information
+
+For the forward backward algorithm we have to be able to traverse the lattice. Maybe just having an ordering of
+nodes/edges is enough.
+
+```
+a(2,0) (2,1) (2,2)
+
+k(1,0) (1,1) (1,2)
+
+.(0,0) (0,1) (0,2)
+   .     c     h
+
+
+(2 states - 'N': non-match, 'M': match)
+forward = [
+    (0, 0, 'M'),
+    (0, 0, 'N'),
+    (0, 0, 0, 1, 'N', 'N'),
+    (0, 0, 0, 1, 'M', 'N'),
+    (0, 0, 1, 0, 'N', 'N'),
+    (0, 0, 1, 0, 'M', 'N'),
+    (0, 0, 1, 1, 'M', 'M'),
+    (0, 0, 1, 1, 'N', 'M'),
+    (0, 1, 'M'),
+    (0, 1, 'N'),
+    (0, 1, 0, 2, 'N', 'N'),
+    (0, 1, 0, 2, 'M', 'N'),
+    (0, 1, 1, 1, 'N', 'N'),
+    (0, 1, 1, 1, 'M', 'N'),
+    (0, 1, 2, 1, 'N', 'N'),  # Skip
+    (0, 1, 2, 1, 'M', 'N'),  # Skip
+
+    ...[etc]...
+]
+```
+By just iterating the list and adding the $alpha$s we fill the forward probabilities - guessing the same can be done for
+the backward probabilities by iterating the list in reverse order.
 

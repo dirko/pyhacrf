@@ -41,10 +41,11 @@ class Hacrf(object):
         if len(X) != n_points:
             raise Exception('Number of training points should be the same as training labels.')
 
-        # Default state machine
-        state_machine = [(0, 0, (1, 1)),  # Match
-                         (0, 0, (0, 1)),  # Insertion
-                         (0, 0, (1, 0))]  # Deletion
+        # Default state machine. Tuple (list_of_states, list_of_transitions)
+        state_machine = ([0],
+                         [(0, 0, (1, 1)),  # Match
+                          (0, 0, (0, 1)),  # Insertion
+                          (0, 0, (1, 0))])  # Deletion
 
         # Initialize the parameters given the state machine, features, and target classes.
         self.parameters = self._initialize_parameters(state_machine, X[0].shape[2], classes)
@@ -76,9 +77,8 @@ class Hacrf(object):
     @staticmethod
     def _initialize_parameters(state_machine, n_features, classes):
         """ Helper to create initial parameter vector with the correct shape. """
-        n_states = len(set(state0 for state0, state1, transition in state_machine).
-                       union(state1 for state0, state1, transition in state_machine))
-        n_transitions = len(set(transition for state0, state1, transition in state_machine))
+        n_states = len(state_machine[0])
+        n_transitions = len(state_machine[1])
         n_classes = len(classes.keys())
         return np.zeros((n_features, n_states + n_transitions, n_classes))
 
@@ -93,3 +93,22 @@ class _Model(object):
 
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
+
+    @staticmethod
+    def _build_lattice(x, state_machine):
+        """ Helper to construct the list of nodes and edges. """
+        I, J, _ = x.shape
+        lattice = []
+        states, transitions = state_machine
+        for i in xrange(I):
+            for j in xrange(J):
+                for state in states:
+                    lattice.append((i, j, state))
+                for state1, state2, delta in transitions:
+                    if callable(delta):
+                        di, dj = delta(i, j, x)
+                    else:
+                        di, dj = delta
+                    if i + di < I and j + dj < J:
+                        lattice.append((i, j, i + di, j + dj, state1, state2))
+        return lattice
