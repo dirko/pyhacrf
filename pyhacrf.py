@@ -100,15 +100,19 @@ class _Model(object):
         I, J, _ = x.shape
         lattice = []
         states, transitions = state_machine
-        for i in xrange(I):
-            for j in xrange(J):
-                for state in states:
-                    lattice.append((i, j, state))
-                for state1, state2, delta in transitions:
+        unvisited_nodes = [(0, 0, 0)]
+
+        while unvisited_nodes:
+            i, j, s = unvisited_nodes.pop(0)
+            lattice.append((i, j, s))
+            for s0, s1, delta in transitions:
+                if s == s0:
                     if callable(delta):
                         di, dj = delta(i, j, x)
                     else:
                         di, dj = delta
                     if i + di < I and j + dj < J:
-                        lattice.append((i, j, i + di, j + dj, state1, state2))
-        return lattice
+                        lattice.append((i, j, i + di, j + dj, s0, s1))
+                        unvisited_nodes.append((i + di, j + dj, s1))
+
+        return sorted(lattice)
