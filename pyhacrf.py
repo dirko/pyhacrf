@@ -5,6 +5,7 @@
 
 import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
+from collections import defaultdict
 
 
 class Hacrf(object):
@@ -90,9 +91,18 @@ class _Model(object):
         self.classes = classes
         self.x = x
         self.y = y
+        self._lattice = self._build_lattice(self.x, self.state_machine)
 
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
+        alpha = defaultdict(float)
+        for node in self._lattice:
+            if len(node) < 3:
+                i, j, s = node
+                alpha[node] += np.dot(self.x[i, j, :], parameters[:, s, ])
+            else:
+                pass
+
 
     @staticmethod
     def _build_lattice(x, state_machine):
@@ -105,14 +115,14 @@ class _Model(object):
         while unvisited_nodes:
             i, j, s = unvisited_nodes.pop(0)
             lattice.append((i, j, s))
-            for s0, s1, delta in transitions:
+            for transition_index, (s0, s1, delta) in enumerate(transitions):
                 if s == s0:
                     if callable(delta):
                         di, dj = delta(i, j, x)
                     else:
                         di, dj = delta
                     if i + di < I and j + dj < J:
-                        lattice.append((i, j, i + di, j + dj, s0, s1))
+                        lattice.append((i, j, i + di, j + dj, s0, s1, transition_index))
                         unvisited_nodes.append((i + di, j + dj, s1))
 
         return sorted(lattice)
