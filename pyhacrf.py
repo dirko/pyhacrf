@@ -37,19 +37,16 @@ class Hacrf(object):
         self : object
             Returns self.
         """
-        classes = dict((target_name, target_number) for target_name, target_number in enumerate(set(y)))
+        classes = list(set(y))
         n_points = len(y)
         if len(X) != n_points:
             raise Exception('Number of training points should be the same as training labels.')
 
         # Default state machine. Tuple (list_of_states, list_of_transitions)
-        state_machine = ([0],
-                         [(0, 0, (1, 1)),  # Match
-                          (0, 0, (0, 1)),  # Insertion
-                          (0, 0, (1, 0))])  # Deletion
+        state_machine, states_to_classes = self._default_state_machine(classes)
 
         # Initialize the parameters given the state machine, features, and target classes.
-        self.parameters = self._initialize_parameters(state_machine, X[0].shape[2], classes)
+        self.parameters = self._initialize_parameters(state_machine, X[0].shape[2])
 
         # Create a new model object for each training example
         models = [_Model(state_machine, classes, x, ty) for x, ty in zip(X, y)]
@@ -76,12 +73,21 @@ class Hacrf(object):
         pass
 
     @staticmethod
-    def _initialize_parameters(state_machine, n_features, classes):
+    def _initialize_parameters(state_machine, n_features):
         """ Helper to create initial parameter vector with the correct shape. """
         n_states = len(state_machine[0])
         n_transitions = len(state_machine[1])
-        n_classes = len(classes.keys())
-        return np.zeros((n_features, n_states + n_transitions, n_classes))
+        return np.zeros((n_features, n_states + n_transitions))
+
+    @staticmethod
+    def _default_state_machine(classes):
+        """ Helper to construct a state machine that includes insertions, matches, and deletions for each class. """
+        n_classes = len(classes)
+        return (([tuple(i for i in xrange(n_classes))],  # A state for each class. In tuple because they are all start states.
+                 [(i, i, (1, 1)) for i in xrange(n_classes)] +  # Match
+                 [(i, i, (0, 1)) for i in xrange(n_classes)] +  # Insertion
+                 [(i, i, (1, 0)) for i in xrange(n_classes)]),  # Deletion
+                dict((i, c) for i, c in enumerate(classes)))
 
 
 class _Model(object):
@@ -99,10 +105,14 @@ class _Model(object):
         for node in self._lattice:
             if len(node) < 3:
                 i, j, s = node
-                alpha[node] += np.dot(self.x[i, j, :], parameters[:, s, ])
+                alpha[node] += np.exp(np.dot(self.x[i, j, :], parameters[:, s]))
             else:
-                pass
-
+                i0, j0, i1, j1, s0, s1, edge_parameter_index = node  # Actually an edge in this case
+                # Use the features at the destination of the edge.
+                edge_potential = np.exp(np.dot(self.x[i1, j1, :], parameters[:, edge_parameter_index])
+                                        * alpha[(i0, j0, s0)])
+                alpha[node] = edge_potential
+                alpha[(i1, j1, s1)] += edge_potential
 
     @staticmethod
     def _build_lattice(x, state_machine):
@@ -110,7 +120,10 @@ class _Model(object):
         I, J, _ = x.shape
         lattice = []
         states, transitions = state_machine
-        unvisited_nodes = [(0, 0, 0)]
+        # Add start states
+        assert(isinstance(states[0], tuple))
+        unvisited_nodes = [(0, 0, s) for s in states[0]]
+        n_states = len(states) - 1 + len(states[0])
 
         while unvisited_nodes:
             i, j, s = unvisited_nodes.pop(0)
@@ -122,7 +135,9 @@ class _Model(object):
                     else:
                         di, dj = delta
                     if i + di < I and j + dj < J:
-                        lattice.append((i, j, i + di, j + dj, s0, s1, transition_index))
+                        lattice.append((i, j, i + di, j + dj, s0, s1, transition_index + n_states))
                         unvisited_nodes.append((i + di, j + dj, s1))
 
         return sorted(lattice)
+
+

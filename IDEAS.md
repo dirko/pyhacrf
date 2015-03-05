@@ -109,3 +109,9 @@ forward = [
 By just iterating the list and adding the $alpha$s we fill the forward probabilities - guessing the same can be done for
 the backward probabilities by iterating the list in reverse order.
 
+## Classes
+
+We need a lattice for each class or a way to link each node and edge with a class. Although the second option sounds
+more general the start state must then belong to one class, which breaks te symmetry. Possible solution is to
+allow more than one start state.
+

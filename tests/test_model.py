@@ -10,22 +10,35 @@ from pyhacrf import _Model
 
 class TestHacrf(unittest.TestCase):
     def test_initialize_parameters(self):
-        states = [0, 1]
+        states = [(0,), 1]
         transitions = [(0, 0, (1, 1)),
                        (0, 1, (0, 1)),
                        (0, 0, (1, 0))]
         state_machine = (states, transitions)
         X = [np.zeros((6, 7, 3))]
-        classes = {'y1': 0, 'y2': 1}
 
-        actual_parameters = Hacrf._initialize_parameters(state_machine, X[0].shape[2], classes)
-        expected_parameter_shape = (3, 5, 2)
+        actual_parameters = Hacrf._initialize_parameters(state_machine, X[0].shape[2])
+        expected_parameter_shape = (3, 5)
         self.assertEqual(actual_parameters.shape, expected_parameter_shape)
+
+    def test_default_state_machine(self):
+        classes = ['a', 'b']
+        expected_state_machine = ([(0, 1)],
+                                  [(0, 0, (1, 1)),
+                                   (1, 1, (1, 1)),
+                                   (0, 0, (0, 1)),
+                                   (1, 1, (0, 1)),
+                                   (0, 0, (1, 0)),
+                                   (1, 1, (1, 0))])
+        expected_states_to_classes = {0: 'a', 1: 'b'}
+        actual_state_machine, actual_states_to_classes = Hacrf._default_state_machine(classes)
+        self.assertEqual(actual_state_machine, expected_state_machine)
+        self.assertEqual(actual_states_to_classes, expected_states_to_classes)
 
 
 class TestModel(unittest.TestCase):
     def test_build_lattice(self):
-        states = [0, 1, 3]
+        states = [(0, 1), 3]
         transitions = [(0, 0, (1, 1)),
                        (0, 1, (0, 1)),
                        (0, 0, (1, 0)),
@@ -41,6 +54,7 @@ class TestModel(unittest.TestCase):
         expected_lattice = [(0, 0, 0),
                             (0, 0, 0, 1, 0, 1, 1),
                             (0, 0, 0, 2, 0, 3, 3),
+                            (0, 0, 1),
                             (0, 0, 1, 0, 0, 0, 2),
                             (0, 0, 1, 1, 0, 0, 0),
                             (0, 1, 1),
