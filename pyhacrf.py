@@ -49,7 +49,7 @@ class Hacrf(object):
         self.parameters = self._initialize_parameters(state_machine, X[0].shape[2])
 
         # Create a new model object for each training example
-        models = [_Model(state_machine, classes, x, ty) for x, ty in zip(X, y)]
+        models = [_Model(state_machine, states_to_classes, x, ty) for x, ty in zip(X, y)]
 
         derivative = np.zeros(self.parameters.shape)
 
@@ -75,9 +75,9 @@ class Hacrf(object):
     @staticmethod
     def _initialize_parameters(state_machine, n_features):
         """ Helper to create initial parameter vector with the correct shape. """
-        n_states = len(state_machine[0])
+        n_states = max(max(state_machine[0][0]), max(state_machine[0][1:])) + 1
         n_transitions = len(state_machine[1])
-        return np.zeros((n_features, n_states + n_transitions))
+        return np.zeros((n_states + n_transitions, n_features))
 
     @staticmethod
     def _default_state_machine(classes):
@@ -92,27 +92,32 @@ class Hacrf(object):
 
 class _Model(object):
     """ The actual model that implements the inference routines. """
-    def __init__(self, state_machine, classes, x, y):
+    def __init__(self, state_machine, states_to_classes, x, y):
         self.state_machine = state_machine
-        self.classes = classes
+        self.states_to_classes = states_to_classes
         self.x = x
         self.y = y
         self._lattice = self._build_lattice(self.x, self.state_machine)
 
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
+        alpha = self._forward(parameters)
+
+    def _forward(self, parameters):
+        """ Helper to calculate the forward weights.  """
         alpha = defaultdict(float)
         for node in self._lattice:
             if len(node) < 3:
                 i, j, s = node
-                alpha[node] += np.exp(np.dot(self.x[i, j, :], parameters[:, s]))
+                alpha[node] += np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
             else:
                 i0, j0, i1, j1, s0, s1, edge_parameter_index = node  # Actually an edge in this case
                 # Use the features at the destination of the edge.
-                edge_potential = np.exp(np.dot(self.x[i1, j1, :], parameters[:, edge_parameter_index])
+                edge_potential = np.exp(np.dot(self.x[i1, j1, :], parameters[edge_parameter_index, :])
                                         * alpha[(i0, j0, s0)])
                 alpha[node] = edge_potential
                 alpha[(i1, j1, s1)] += edge_potential
+        return alpha
 
     @staticmethod
     def _build_lattice(x, state_machine):
@@ -123,7 +128,7 @@ class _Model(object):
         # Add start states
         assert(isinstance(states[0], tuple))
         unvisited_nodes = [(0, 0, s) for s in states[0]]
-        n_states = len(states) - 1 + len(states[0])
+        n_states = max(max(states[0]), max(states[1:])) + 1
 
         while unvisited_nodes:
             i, j, s = unvisited_nodes.pop(0)
