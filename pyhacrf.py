@@ -142,7 +142,24 @@ class _Model(object):
                     if i + di < I and j + dj < J:
                         lattice.append((i, j, i + di, j + dj, s0, s1, transition_index + n_states))
                         unvisited_nodes.append((i + di, j + dj, s1))
+        lattice.sort()
 
-        return sorted(lattice)
+        # Step backwards through lattice and add visitable nodes to the set of nodes to keep. The rest are discarded.
+        final_lattice = []
+        visited_nodes = set()
+        for node in lattice[::-1]:
+            if len(node) <= 3:
+                i, j, s = node
+                if i == I - 1 and j == J - 1:
+                    visited_nodes.add(node)
+            else:
+                i0, j0, i1, j1, s0, s1, edge_parameter_index = node
+                if (i1, j1, s1) in visited_nodes:
+                    visited_nodes.add(node)
+                    visited_nodes.add((i0, j0, s0))
+            if node in visited_nodes:
+                final_lattice.insert(0, node)
+
+        return final_lattice
 
 

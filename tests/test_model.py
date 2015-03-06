@@ -49,22 +49,18 @@ class TestModel(unittest.TestCase):
         #               #     ________
         # 1.  .  .      # 1  0 - 10 - 31
         #               #    | /_______
-        # 0.  .  .      # 0  0 -- 1    3
+        # 0.  .  .      # 0 10 -- 1    3
         #  0  1  2      #    0    1    2
+        #
+        # 1(0, 1), 3(0, 2), 1(1, 1), 1(0, 0) should be pruned because they represent partial alignments.
+        # Only nodes that are reachable by stepping back from (1, 2) must be included in the lattice.
         actual_lattice = _Model._build_lattice(x, state_machine)
         expected_lattice = [(0, 0, 0),
-                            (0, 0, 0, 1, 0, 1, 1 + n_states),
-                            (0, 0, 0, 2, 0, 3, 3 + n_states),
-                            (0, 0, 1),
                             (0, 0, 1, 0, 0, 0, 2 + n_states),
                             (0, 0, 1, 1, 0, 0, 0 + n_states),
-                            (0, 1, 1),
-                            (0, 2, 3),
                             (1, 0, 0),
-                            (1, 0, 1, 1, 0, 1, 1 + n_states),
                             (1, 0, 1, 2, 0, 3, 3 + n_states),
                             (1, 1, 0),
-                            (1, 1, 1),
                             (1, 1, 1, 2, 0, 1, 1 + n_states),
                             (1, 2, 1),
                             (1, 2, 3)]
