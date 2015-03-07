@@ -107,14 +107,18 @@ class _Model(object):
         """ Helper to calculate the forward weights.  """
         alpha = defaultdict(float)
         for node in self._lattice:
-            if len(node) < 3:
+            if len(node) == 3:
                 i, j, s = node
-                alpha[node] += np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
+                if i == 0 and j == 0:
+                    alpha[node] = np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
+                else:
+                    alpha[node] *= np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
             else:
                 i0, j0, i1, j1, s0, s1, edge_parameter_index = node  # Actually an edge in this case
                 # Use the features at the destination of the edge.
                 edge_potential = np.exp(np.dot(self.x[i1, j1, :], parameters[edge_parameter_index, :])
                                         * alpha[(i0, j0, s0)])
+                print node, self.x[i1, j1, :], parameters[edge_parameter_index, :], np.emath.log(alpha[(i0, j0, s0)])
                 alpha[node] = edge_potential
                 alpha[(i1, j1, s1)] += edge_potential
         return alpha

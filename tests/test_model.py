@@ -67,7 +67,8 @@ class TestModel(unittest.TestCase):
         self.assertEqual(actual_lattice, expected_lattice)
 
     def test_forward(self):
-        states = [(0, 1), 3]
+        states = [(0, 1), 2]
+        n_states = 3
         transitions = [(0, 0, (1, 1)),
                        (0, 1, (0, 1)),
                        (0, 0, (1, 0)),
@@ -83,7 +84,6 @@ class TestModel(unittest.TestCase):
         # 4  [ 1,  2],
         # 5  [ 3,  4],
         # 6  [ 5,  6]])
-
         x = np.array([[[0, 1],
                        [1, 0],
                        [2, 1]],
@@ -91,34 +91,32 @@ class TestModel(unittest.TestCase):
                        [1, 0],
                        [1, 0]]])
         y = 'a'
-
         # Expected lattice:
         #               #     ________
-        # 1.  .  .      # 1  0 - 10 - 31
-        #               #    | /_______
-        # 0.  .  .      # 0  0 -- 1    3
+        # 1.  .  .      # 1  0  __0 - 21
+        #               #    | /
+        # 0.  .  .      # 0  0
         #  0  1  2      #    0    1    2
-
-        # expected_alpha = {
-        #     (0, 0, 0): np.exp(-6),
-        #     (0, 0, 0, 1, 0, 1, 4): np.exp(-6) * np.exp(1),
-        #     (0, 0, 0, 2, 0, 3, 6): np.exp(-6) * np.exp(16),
-        #     (0, 0, 1): np.exp(-4),
-        #     (0, 0, 1, 0, 0, 0, 5): np.exp(-6) * np.exp(4),
-        #     (0, 0, 1, 1, 0, 0, 3): np.exp(-6) * np.exp(-1),
-        #     (0, 1, 1): np.exp(-6) * np.exp(1) * np.exp(-5),
-        #     (0, 2, 3): np.exp(-6) * np.exp(16) * np.exp(),
-        #     (1, 0, 0),
-        #     (1, 0, 1, 1, 0, 1, 4),
-        #     (1, 0, 1, 2, 0, 3, 6),
-        #     (1, 1, 0),
-        #     (1, 1, 1),
-        #     (1, 1, 1, 2, 0, 1, 4),
-        #     (1, 2, 1),
-        #     (1, 2, 3)
-        # }
-
+        expected_alpha = {
+            (0, 0, 0): np.exp(-6),
+            (0, 0, 1, 0, 0, 0, 5): np.exp(-6) * np.exp(4),
+            (0, 0, 1, 1, 0, 0, 3): np.exp(-6) * np.exp(-1),
+            (1, 0, 0): np.exp(-6) * np.exp(4) * np.exp(-6),
+            (1, 0, 1, 2, 0, 2, 6): np.exp(-6) * np.exp(4) * np.exp(-6) * np.exp(5),
+            (1, 1, 0): np.exp(-6) * np.exp(-1) * np.exp(-7),
+            (1, 1, 1, 2, 0, 1, 4): np.exp(-6) * np.exp(-1) * np.exp(-7) * np.exp(1),
+            (1, 2, 1): np.exp(-6) * np.exp(-1) * np.exp(-7) * np.exp(1) * np.exp(-5),
+            (1, 2, 2): np.exp(-6) * np.exp(4) * np.exp(-6) * np.exp(5) * np.exp(-3)
+        }
         test_model = _Model(state_machine, states_to_classes, x, y)
+        actual_alpha = test_model._forward(parameters)
+
+        self.assertEqual(len(actual_alpha), len(expected_alpha))
+        print
+        for key in sorted(expected_alpha.keys()):
+            print key, np.emath.log(expected_alpha[key]), np.emath.log(actual_alpha[key])
+            #self.assertEqual(actual_alpha[key], val)
+        kaas
 
 
 if __name__ == '__main__':
