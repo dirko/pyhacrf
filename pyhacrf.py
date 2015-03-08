@@ -116,9 +116,8 @@ class _Model(object):
             else:
                 i0, j0, i1, j1, s0, s1, edge_parameter_index = node  # Actually an edge in this case
                 # Use the features at the destination of the edge.
-                edge_potential = np.exp(np.dot(self.x[i1, j1, :], parameters[edge_parameter_index, :])
-                                        * alpha[(i0, j0, s0)])
-                print node, self.x[i1, j1, :], parameters[edge_parameter_index, :], np.emath.log(alpha[(i0, j0, s0)])
+                edge_potential = (np.exp(np.dot(self.x[i1, j1, :], parameters[edge_parameter_index, :]))
+                                  * alpha[(i0, j0, s0)])
                 alpha[node] = edge_potential
                 alpha[(i1, j1, s1)] += edge_potential
         return alpha

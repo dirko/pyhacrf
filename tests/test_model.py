@@ -115,8 +115,7 @@ class TestModel(unittest.TestCase):
         print
         for key in sorted(expected_alpha.keys()):
             print key, np.emath.log(expected_alpha[key]), np.emath.log(actual_alpha[key])
-            #self.assertEqual(actual_alpha[key], val)
-        kaas
+            self.assertEqual(actual_alpha[key], expected_alpha[key])
 
 
 if __name__ == '__main__':
