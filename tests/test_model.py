@@ -165,6 +165,42 @@ class TestModel(unittest.TestCase):
             print key, expected_alpha[key], actual_alpha[key]
             self.assertAlmostEqual(actual_alpha[key], expected_alpha[key])
 
+    def test_backward_connected(self):
+        classes = ['a', 'b']
+        parameters = np.array(range(-3, 3)).reshape((3, 2))
+        # parameters =
+        #0 ([[-3, -2],
+        #1   [-1,  0],
+        #2   [ 1,  2]])
+        x = np.array([[[0, 1],
+                       [2, 1]],
+                      [[0, 1],
+                       [1, 0]]])
+        y = 'a'
+        expected_beta = {
+            (0, 0, 0): (np.exp(-4) + np.exp(-12)) * np.exp(-2),
+            (0, 0, 0, 0, 1, 0, 1): np.exp(-3) * np.exp(1) * np.exp(-8) * np.exp(-2),
+            (0, 0, 0, 1, 0, 0, 2): np.exp(-3) * np.exp(-1) * np.exp(-2) * np.exp(2),
+            (0, 1, 0): np.exp(-3) * np.exp(1) * np.exp(-8),
+            (0, 1, 0, 1, 1, 0, 2): np.exp(-3) * np.exp(1),
+            (1, 0, 0): np.exp(-3) * np.exp(-1) * np.exp(-2),
+            (1, 0, 0, 1, 1, 0, 1): np.exp(-3) * np.exp(-1),
+            (1, 1, 0): np.exp(-3)
+        }
+        state_machine = ([0], [(0, 0, (0, 1)), (0, 0, (1, 0))])
+        states_to_classes = {0: 'a'}
+
+        print state_machine, states_to_classes
+        print
+        test_model = _Model(state_machine, states_to_classes, x, y)
+        for s in test_model._lattice:
+            print s
+        actual_beta = test_model._backward(parameters)
+
+        self.assertEqual(len(actual_beta), len(expected_beta))
+        for key in sorted(expected_beta.keys(), reverse=True):
+            print key, expected_beta[key], actual_beta[key]
+            self.assertAlmostEqual(actual_beta[key], expected_beta[key])
 
 if __name__ == '__main__':
     unittest.main()

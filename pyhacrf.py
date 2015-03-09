@@ -101,6 +101,7 @@ class _Model(object):
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
         alpha = self._forward(parameters)
+        beta = self._backward(parameters)
 
     def _forward(self, parameters):
         """ Helper to calculate the forward weights.  """
@@ -120,6 +121,28 @@ class _Model(object):
                 alpha[node] = edge_potential
                 alpha[(i1, j1, s1)] += edge_potential
         return alpha
+
+    def _backward(self, parameters):
+        """ Helper to calculate the backward weights.  """
+        beta = defaultdict(float)
+        I, J, _ = self.x.shape
+        for node in self._lattice[::-1]:
+            if len(node) == 3:
+                i, j, s = node
+                if i == I - 1 and j == J - 1:
+                    beta[node] = np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
+                else:
+                    beta[node] *= np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
+            else:
+                i0, j0, s0, i1, j1, s1, edge_parameter_index = node  # Actually an edge in this case
+                # Use the features at the destination of the edge.
+                edge_potential = (np.exp(np.dot(self.x[i1, j1, :], parameters[edge_parameter_index, :]))
+                                  * beta[(i1, j1, s1)])
+                beta[node] = edge_potential
+                beta[(i0, j0, s0)] += edge_potential
+        return beta
+
+
 
     @staticmethod
     def _build_lattice(x, state_machine):
