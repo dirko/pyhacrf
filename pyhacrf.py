@@ -75,15 +75,14 @@ class Hacrf(object):
     @staticmethod
     def _initialize_parameters(state_machine, n_features):
         """ Helper to create initial parameter vector with the correct shape. """
-        n_states = max(max(state_machine[0][0]), max(state_machine[0][1:])) + 1
-        n_transitions = len(state_machine[1])
+        n_states, n_transitions = _n_states(state_machine)
         return np.zeros((n_states + n_transitions, n_features))
 
     @staticmethod
     def _default_state_machine(classes):
         """ Helper to construct a state machine that includes insertions, matches, and deletions for each class. """
         n_classes = len(classes)
-        return (([tuple(i for i in xrange(n_classes))],  # A state for each class. In tuple because they are all start states.
+        return (([i for i in xrange(n_classes)],  # A state for each class.
                  [(i, i, (1, 1)) for i in xrange(n_classes)] +  # Match
                  [(i, i, (0, 1)) for i in xrange(n_classes)] +  # Insertion
                  [(i, i, (1, 0)) for i in xrange(n_classes)]),  # Deletion
@@ -114,7 +113,7 @@ class _Model(object):
                 else:
                     alpha[node] *= np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
             else:
-                i0, j0, i1, j1, s0, s1, edge_parameter_index = node  # Actually an edge in this case
+                i0, j0, s0, i1, j1, s1, edge_parameter_index = node  # Actually an edge in this case
                 # Use the features at the destination of the edge.
                 edge_potential = (np.exp(np.dot(self.x[i1, j1, :], parameters[edge_parameter_index, :]))
                                   * alpha[(i0, j0, s0)])
@@ -127,15 +126,17 @@ class _Model(object):
         """ Helper to construct the list of nodes and edges. """
         I, J, _ = x.shape
         lattice = []
-        states, transitions = state_machine
+        start_states, transitions = state_machine
         # Add start states
-        assert(isinstance(states[0], tuple))
-        unvisited_nodes = [(0, 0, s) for s in states[0]]
-        n_states = max(max(states[0]), max(states[1:])) + 1
+        unvisited_nodes = [(0, 0, s) for s in start_states]
+        visited_nodes = set()
+        n_states, _ = _n_states(state_machine)
 
         while unvisited_nodes:
             i, j, s = unvisited_nodes.pop(0)
-            lattice.append((i, j, s))
+            if (i, j, s) not in visited_nodes:
+                lattice.append((i, j, s))
+                visited_nodes.add((i, j, s))
             for transition_index, (s0, s1, delta) in enumerate(transitions):
                 if s == s0:
                     if callable(delta):
@@ -143,8 +144,11 @@ class _Model(object):
                     else:
                         di, dj = delta
                     if i + di < I and j + dj < J:
-                        lattice.append((i, j, i + di, j + dj, s0, s1, transition_index + n_states))
-                        unvisited_nodes.append((i + di, j + dj, s1))
+                        edge = (i, j, s0, i + di, j + dj, s1, transition_index + n_states)
+                        if edge not in visited_nodes:
+                            lattice.append(edge)
+                            unvisited_nodes.append((i + di, j + dj, s1))
+                            visited_nodes.add(edge)
         lattice.sort()
 
         # Step backwards through lattice and add visitable nodes to the set of nodes to keep. The rest are discarded.
@@ -156,7 +160,7 @@ class _Model(object):
                 if i == I - 1 and j == J - 1:
                     visited_nodes.add(node)
             else:
-                i0, j0, i1, j1, s0, s1, edge_parameter_index = node
+                i0, j0, s0, i1, j1, s1, edge_parameter_index = node
                 if (i1, j1, s1) in visited_nodes:
                     visited_nodes.add(node)
                     visited_nodes.add((i0, j0, s0))
@@ -166,3 +170,9 @@ class _Model(object):
         return final_lattice
 
 
+def _n_states(state_machine):
+    """ Helper to calculate the number of states.  """
+    start_states, edges = state_machine
+    max_state = max(max(s for s, _, _ in edges), max(s for _, s, _ in edges)) + 1
+    n_transitions = len(state_machine[1])
+    return max_state, n_transitions
