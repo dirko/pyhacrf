@@ -51,16 +51,14 @@ class Hacrf(object):
         # Create a new model object for each training example
         models = [_Model(state_machine, states_to_classes, x, ty) for x, ty in zip(X, y)]
 
-        derivative = np.zeros(self.parameters.shape)
-
         def _objective(parameters):
-            derivative.fill(0.0)
+            derivative = np.zeros(self.parameters.shape)
             ll = 0.0  # Log likelihood
             # TODO: Embarrassingly parallel
             for model in models:
-                model.forward_backward(parameters)
-                model.add_derivative(derivative)
-                ll += model.ll
+                dll, dderivative = model.forward_backward(parameters)
+                ll += dll
+                derivative += dderivative
             return -ll, -derivative
 
         self._optimizer_result = fmin_l_bfgs_b(_objective, self.parameters)
@@ -100,8 +98,29 @@ class _Model(object):
 
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
-        alpha = self._forward(parameters)
+        alpha, log_predictions = self._forward_probabilities(parameters)
         beta = self._backward(parameters)
+
+        derivate = np.zeros(parameters.shape)
+        for node in self._lattice:
+            pass
+
+        return log_predictions[self.y]
+
+    def _forward_probabilities(self, parameters):
+        """ Helper to calculate the predicted probability distribution over classes given some parameters. """
+        alpha = self._forward(parameters)
+        I, J, _ = self.x.shape
+
+        predictions = {}
+        Z = 0.0
+
+        for state, predicted_class in self.states_to_classes.items():
+            weight = alpha[(I, J, state)]
+            predictions[self.states_to_classes[state]] = weight
+            Z += weight
+        return alpha, {class_name: np.emath.log(prediction) - np.emath.log(Z)
+                       for class_name, prediction in predictions.iteritems()}
 
     def _forward(self, parameters):
         """ Helper to calculate the forward weights.  """

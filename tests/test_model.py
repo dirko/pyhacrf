@@ -202,5 +202,56 @@ class TestModel(unittest.TestCase):
             print key, expected_beta[key], actual_beta[key]
             self.assertAlmostEqual(actual_beta[key], expected_beta[key])
 
+    def test_forward_backward_same_partition_value(self):
+        classes = ['a', 'b']
+        parameters = np.array(range(-8, 8)).reshape((8, 2))
+        x = np.array([[[0, 1],
+                       [2, 1]],
+                      [[0, 1],
+                       [1, 0]]])
+        y = 'a'
+        state_machine, states_to_classes = Hacrf._default_state_machine(classes)
+        test_model = _Model(state_machine, states_to_classes, x, y)
+        actual_alpha = test_model._forward(parameters)
+        actual_beta = test_model._backward(parameters)
+
+        print actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)]
+        print actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)]
+        self.assertAlmostEqual(actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)])
+        self.assertAlmostEqual(actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)])
+
+    def test_derivate_chain(self):
+        classes = ['a', 'b']
+        parameters = np.array(range(-8, 8)).reshape((8, 2))
+        # parameters =
+        #0([[-8, -7],
+        #1  [-6, -5],
+        #2  [-4, -3],
+        #3  [-2, -1],
+        #4  [ 0,  1],
+        #5  [ 2,  3],
+        #6  [ 4,  5],
+        #7  [ 6,  7]])
+        x = np.array([[[0, 1],
+                       [1, 2]]])
+        y = 'a'
+        state_machine, states_to_classes = Hacrf._default_state_machine(classes)
+        test_model = _Model(state_machine, states_to_classes, x, y)
+        print test_model._lattice
+        #
+        # 0   01 --- 01
+        #     0      1
+
+        #
+        #
+        expected_ll =
+        actual_ll, actual_dll = test_model.forward_backward(parameters)
+
+        print actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)]
+        print actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)]
+        kaas
+        self.assertAlmostEqual(actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)])
+
+
 if __name__ == '__main__':
     unittest.main()
