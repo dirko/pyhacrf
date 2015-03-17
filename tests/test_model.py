@@ -238,17 +238,37 @@ class TestModel(unittest.TestCase):
         state_machine, states_to_classes = Hacrf._default_state_machine(classes)
         test_model = _Model(state_machine, states_to_classes, x, y)
         print test_model._lattice
+        print states_to_classes
         #
         # 0   01 --- 01
         #     0      1
+        # states_to_classes = {0: 'a', 1: 'b'}
+        # (0, 0, 0) :               exp(-7)
+        # (0, 0, 0, 0, 1, 0, 4) :   exp(-7) * exp(2)
+        # (0, 0, 1) :               exp(-5)
+        # (0, 0, 1, 0, 1, 1, 5) :   exp(-5) * exp(8)
+        # (0, 1, 0) :               exp(-7) * exp(2) * exp(-8 - 14)     = exp(-27)
+        # (0, 1, 1) :               exp(-5) * exp(8) * exp(-6 - 10)     = exp(-13)
+        # p(y|G,X) = f0(g00,g01,x00,x01,y) f1(g40,g41,x10,x11,y) f2(g00,g01,x00,x01,y)  +
+        #            f0(g10,g11,x00,x01,y) f1(g50,g51,x10,x11,y) f2(g10,g11,x00,x01,y)
+        # = exp(-27) / (exp(-27) + exp(-13))
+        expected_ll = np.emath.log(np.exp(-27) / (np.exp(-27) + np.exp(-13)))
+        expected_dll = np.zeros(parameters.shape)
 
-        #
-        #
-        expected_ll =
+        # Finite element approximation
+        delta = 10.0**-15
+        for i in xrange(len(expected_dll)):
+            dg = np.zeros(parameters.shape)
+            dg[i] = delta
+            y0, _ = test_model.forward_backward(parameters)
+            y1, _ = test_model.forward_backward(parameters + dg)
+            expected_dll[i] = (np.exp(y1) - np.exp(y0)) / delta
+
         actual_ll, actual_dll = test_model.forward_backward(parameters)
 
-        print actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)]
-        print actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)]
+        print expected_ll, actual_ll
+        print expected_dll
+        print actual_dll
         kaas
         self.assertAlmostEqual(actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)])
 

@@ -98,14 +98,20 @@ class _Model(object):
 
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
-        alpha, log_predictions = self._forward_probabilities(parameters)
+        alpha, log_predictions, Z = self._forward_probabilities(parameters)
         beta = self._backward(parameters)
 
-        derivate = np.zeros(parameters.shape)
+        derivative = np.zeros(parameters.shape)
         for node in self._lattice:
-            pass
+            if len(node) == 3:
+                i, j, s = node
+                derivative[s, :] += alpha[node] * self.x[i, j, :] * beta[node] / Z
+            else:
+                i0, j0, s0, i1, j1, s1, edge_parameter_index = node
+                derivative[edge_parameter_index, :] += alpha[node] * self.x[i1, j1, :] * beta[(i1, j1, s1)] / Z
 
-        return log_predictions[self.y]
+        print 'log pred', log_predictions
+        return log_predictions[self.y], derivative
 
     def _forward_probabilities(self, parameters):
         """ Helper to calculate the predicted probability distribution over classes given some parameters. """
@@ -116,11 +122,11 @@ class _Model(object):
         Z = 0.0
 
         for state, predicted_class in self.states_to_classes.items():
-            weight = alpha[(I, J, state)]
+            weight = alpha[(I - 1, J - 1, state)]
             predictions[self.states_to_classes[state]] = weight
             Z += weight
         return alpha, {class_name: np.emath.log(prediction) - np.emath.log(Z)
-                       for class_name, prediction in predictions.iteritems()}
+                       for class_name, prediction in predictions.iteritems()}, Z
 
     def _forward(self, parameters):
         """ Helper to calculate the forward weights.  """
