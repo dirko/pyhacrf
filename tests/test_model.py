@@ -258,7 +258,7 @@ class TestModel(unittest.TestCase):
         expected_ll = np.emath.log(np.exp(-27) / (np.exp(-27) + np.exp(-13)))
         expected_dll = np.zeros(parameters.shape)
 
-        # Finite element approximation
+        # Finite difference gradient approximation
         delta = 10.0**-7
         S, D = expected_dll.shape
         for s in xrange(S):
@@ -275,8 +275,8 @@ class TestModel(unittest.TestCase):
         print expected_ll, actual_ll
         print expected_dll
         print actual_dll
-        kaas
-        self.assertAlmostEqual(actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)])
+        self.assertAlmostEqual(actual_ll, expected_ll)
+        assert_array_almost_equal(actual_dll, expected_dll, decimal=5)
 
 
 if __name__ == '__main__':

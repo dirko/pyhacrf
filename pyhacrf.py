@@ -100,7 +100,6 @@ class _Model(object):
         """ Run the forward backward algorithm with the given parameters. """
         alpha, class_Z, Z = self._forward_probabilities(parameters)
         beta = self._backward(parameters)
-        feature_shaped_ones = np.ones(parameters[1, :].shape)
 
         derivative = np.zeros(parameters.shape)
         for node in self._lattice:
@@ -109,25 +108,13 @@ class _Model(object):
                 in_class = 1.0 if self.states_to_classes[s] == self.y else 0.0
                 E_f = self.x[i, j, :] * in_class
                 E_Z = (alpha[node] * beta[node] * self.x[i, j, :]) / Z
-                print '{:20} {:10} [{:20}] {:10.2e} {:10.2e} {:10.2e} {:10.2e}'.format(node,
-                                                                                       E_f,
-                                                                                       ' '.join('{:.3e}'.format(e) for e in E_Z),
-                                                                                       alpha[node],
-                                                                                       beta[node],
-                                                                                       class_Z[self.y], Z)
                 derivative[s, :] += E_f - E_Z
 
             else:
                 i0, j0, s0, i1, j1, s1, edge_parameter_index = node
                 in_class = 1.0 if self.states_to_classes[s1] == self.y else 0.0
-                E_f = (alpha[node] * beta[node] * self.x[i1, j1, :]) / class_Z[self.y] * in_class
+                E_f = self.x[i1, j1, :] * in_class
                 E_Z = (alpha[node] * beta[node] * self.x[i1, j1, :]) / Z
-                print '{:20} {:10} [{:20}] {:10.2e} {:10.2e} {:10.2e} {:10.2e}'.format(node,
-                                                                                       E_f,
-                                                                                       ' '.join('{:.3e}'.format(e) for e in E_Z),
-                                                                                       alpha[node],
-                                                                                       beta[node],
-                                                                                       class_Z[self.y], Z)
                 derivative[edge_parameter_index, :] += E_f - E_Z
 
         return np.emath.log(class_Z[self.y]) - np.emath.log(Z), derivative
