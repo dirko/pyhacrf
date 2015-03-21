@@ -4,6 +4,7 @@ import unittest
 
 from numpy.testing import assert_array_almost_equal
 import numpy as np
+from numpy import random
 from pyhacrf import Hacrf
 from pyhacrf import _Model
 
@@ -309,6 +310,40 @@ class TestModel(unittest.TestCase):
         print expected_dll
         print actual_dll
         assert_array_almost_equal(actual_dll, expected_dll, decimal=5)
+
+    def test_derivate_large(self):
+        classes = ['a', 'b', 'c']
+        y = 'b'
+        x = random.randn(8, 3, 10) * 5 + 3
+        state_machine, states_to_classes = Hacrf._default_state_machine(classes)
+        parameters = Hacrf._initialize_parameters(state_machine, x.shape[2])
+        parameters = random.randn(*parameters.shape) * 10 - 6
+
+        test_model = _Model(state_machine, states_to_classes, x, y)
+        print test_model._lattice
+        print states_to_classes
+
+        expected_dll = np.zeros(parameters.shape)
+
+        # Finite difference gradient approximation
+        delta = 10.0**-7
+        S, D = expected_dll.shape
+        for s in xrange(S):
+            for d in xrange(D):
+                dg = np.zeros(parameters.shape)
+                dg[s, d] = delta
+                y0, _ = test_model.forward_backward(parameters)
+                y1, _ = test_model.forward_backward(parameters + dg)
+                print s, d, y0, y1
+                expected_dll[s, d] = (y1 - y0) / delta
+
+        actual_ll, actual_dll = test_model.forward_backward(parameters)
+
+        print expected_dll
+        print actual_dll
+        self.assertEqual((np.isnan(actual_dll)).any(), False)
+        assert_array_almost_equal(actual_dll, expected_dll, decimal=5)
+        kaas
 
 if __name__ == '__main__':
     unittest.main()

@@ -52,14 +52,14 @@ class Hacrf(object):
         models = [_Model(state_machine, states_to_classes, x, ty) for x, ty in zip(X, y)]
 
         def _objective(parameters):
-            derivative = np.zeros(self.parameters.shape)
+            gradient = np.zeros(self.parameters.shape)
             ll = 0.0  # Log likelihood
             # TODO: Embarrassingly parallel
             for model in models:
-                dll, dderivative = model.forward_backward(parameters)
+                dll, dgradient = model.forward_backward(parameters)
                 ll += dll
-                derivative += dderivative
-            return -ll, -derivative
+                gradient += dgradient
+            return -ll, -gradient
 
         self._optimizer_result = fmin_l_bfgs_b(_objective, self.parameters)
         return self
