@@ -108,13 +108,14 @@ class TestModel(unittest.TestCase):
             (1, 2, 1): np.exp(-6) * np.exp(-1) * np.exp(-7) * np.exp(1) * np.exp(-5),
             (1, 2, 2): np.exp(-6) * np.exp(4) * np.exp(-6) * np.exp(5) * np.exp(-3)
         }
+        expected_alpha = {k: np.emath.log(v) for k, v in expected_alpha.items()}
         test_model = _Model(state_machine, states_to_classes, x, y)
         actual_alpha = test_model._forward(parameters)
 
         self.assertEqual(len(actual_alpha), len(expected_alpha))
         print
         for key in sorted(expected_alpha.keys()):
-            print key, np.emath.log(expected_alpha[key]), np.emath.log(actual_alpha[key])
+            print key, (expected_alpha[key]), (actual_alpha[key])
             self.assertEqual(actual_alpha[key], expected_alpha[key])
 
     def test_forward_connected(self):
@@ -154,6 +155,8 @@ class TestModel(unittest.TestCase):
             (1, 1, 0): (np.exp(-11) + np.exp(-25) + np.exp(-9)) * np.exp(-8),
             (1, 1, 1): (np.exp(-1) + np.exp(-9) + np.exp(-7)) * np.exp(-6)
         }
+        expected_alpha = {k: np.emath.log(v) for k, v in expected_alpha.items()}
+
         state_machine, states_to_classes = Hacrf._default_state_machine(classes)
         print
         test_model = _Model(state_machine, states_to_classes, x, y)
@@ -187,6 +190,8 @@ class TestModel(unittest.TestCase):
             (1, 0, 0, 1, 1, 0, 1): np.exp(-3),  # * np.exp(-1),
             (1, 1, 0): 1.0  # np.exp(-3)
         }
+        expected_beta = {k: np.emath.log(v) for k, v in expected_beta.items()}
+
         state_machine = ([0], [(0, 0, (0, 1)), (0, 0, (1, 0))])
         states_to_classes = {0: 'a'}
 
@@ -218,10 +223,8 @@ class TestModel(unittest.TestCase):
 
         print actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)]
         print actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)]
-        self.assertAlmostEqual(actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)] * np.exp(np.dot(x[0, 0, :],
-                                                                                               parameters[0, :])))
-        self.assertAlmostEqual(actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)] * np.exp(np.dot(x[0, 0, :],
-                                                                                               parameters[1, :])))
+        self.assertAlmostEqual(actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)] + (np.dot(x[0, 0, :], parameters[0, :])))
+        self.assertAlmostEqual(actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)] + (np.dot(x[0, 0, :], parameters[1, :])))
 
     def test_derivate_chain(self):
         classes = ['a', 'b']
@@ -317,7 +320,7 @@ class TestModel(unittest.TestCase):
         x = random.randn(8, 3, 10) * 5 + 3
         state_machine, states_to_classes = Hacrf._default_state_machine(classes)
         parameters = Hacrf._initialize_parameters(state_machine, x.shape[2])
-        parameters = random.randn(*parameters.shape) * 10 - 6
+        parameters = random.randn(*parameters.shape) * 10 - 2
 
         test_model = _Model(state_machine, states_to_classes, x, y)
         print test_model._lattice
@@ -342,8 +345,7 @@ class TestModel(unittest.TestCase):
         print expected_dll
         print actual_dll
         self.assertEqual((np.isnan(actual_dll)).any(), False)
-        assert_array_almost_equal(actual_dll, expected_dll, decimal=5)
-        kaas
+        assert_array_almost_equal(actual_dll, expected_dll, decimal=4)
 
 if __name__ == '__main__':
     unittest.main()

@@ -105,19 +105,17 @@ class _Model(object):
         for node in self._lattice:
             if len(node) == 3:
                 i, j, s = node
-                in_class = 1.0 if self.states_to_classes[s] == self.y else 0.0
-                E_f = alpha[node] * beta[node] / class_Z[self.y] * self.x[i, j, :] * in_class
-                E_Z = (alpha[node] * beta[node] * self.x[i, j, :]) / Z
+                E_f = (np.exp(alpha[node] + beta[node] - class_Z[self.y]) * self.x[i, j, :]) if self.states_to_classes[s] == self.y else 0.0
+                E_Z = np.exp(alpha[node] + beta[node] - Z) * self.x[i, j, :]
                 derivative[s, :] += E_f - E_Z
 
             else:
                 i0, j0, s0, i1, j1, s1, edge_parameter_index = node
-                in_class = 1.0 if self.states_to_classes[s1] == self.y else 0.0
-                E_f = (alpha[node] * beta[node] / class_Z[self.y]) * self.x[i1, j1, :] * in_class
-                E_Z = (alpha[node] * beta[node] / Z) * self.x[i1, j1, :]
+                E_f = (np.exp(alpha[node] + beta[node] - class_Z[self.y]) * self.x[i1, j1, :]) if self.states_to_classes[s1] == self.y else 0.0
+                E_Z = np.exp(alpha[node] + beta[node] - Z) * self.x[i1, j1, :]
                 derivative[edge_parameter_index, :] += E_f - E_Z
 
-        return np.emath.log(class_Z[self.y]) - np.emath.log(Z), derivative
+        return (class_Z[self.y]) - (Z), derivative
 
     def _forward_probabilities(self, parameters):
         """ Helper to calculate the predicted probability distribution over classes given some parameters. """
@@ -125,51 +123,51 @@ class _Model(object):
         I, J, _ = self.x.shape
 
         class_Z = {}
-        Z = 0.0
+        Z = -np.inf
 
         for state, predicted_class in self.states_to_classes.items():
             weight = alpha[(I - 1, J - 1, state)]
             class_Z[self.states_to_classes[state]] = weight
-            Z += weight
+            Z = np.logaddexp(Z, weight)
         return alpha, class_Z, Z
 
     def _forward(self, parameters):
         """ Helper to calculate the forward weights.  """
-        alpha = defaultdict(float)
+        alpha = defaultdict(lambda: -np.inf)
         for node in self._lattice:
             if len(node) == 3:
                 i, j, s = node
                 if i == 0 and j == 0:
-                    alpha[node] = np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
+                    alpha[node] = (np.dot(self.x[i, j, :], parameters[s, :]))
                 else:
-                    alpha[node] *= np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
+                    alpha[node] += (np.dot(self.x[i, j, :], parameters[s, :]))
             else:
                 i0, j0, s0, i1, j1, s1, edge_parameter_index = node  # Actually an edge in this case
                 # Use the features at the destination of the edge.
-                edge_potential = (np.exp(np.dot(self.x[i1, j1, :], parameters[edge_parameter_index, :]))
-                                  * alpha[(i0, j0, s0)])
+                edge_potential = ((np.dot(self.x[i1, j1, :], parameters[edge_parameter_index, :]))
+                                  + alpha[(i0, j0, s0)])
                 alpha[node] = edge_potential
-                alpha[(i1, j1, s1)] += edge_potential
+                alpha[(i1, j1, s1)] = np.logaddexp(alpha[(i1, j1, s1)], edge_potential)
         return alpha
 
     def _backward(self, parameters):
         """ Helper to calculate the backward weights.  """
-        beta = defaultdict(float)
+        beta = defaultdict(lambda: -np.inf)
         I, J, _ = self.x.shape
         for node in self._lattice[::-1]:
             if len(node) == 3:
                 i, j, s = node
                 if i == I - 1 and j == J - 1:
-                    beta[node] = 1.0  # np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
+                    beta[node] = 0.0  # np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
                 else:
-                    beta[node] *= 1.0  # np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
+                    beta[node] += 0.0  # np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
             else:
                 i0, j0, s0, i1, j1, s1, edge_parameter_index = node  # Actually an edge in this case
                 # Use the features at the destination of the edge.
-                edge_potential = beta[(i1, j1, s1)] * np.exp(np.dot(self.x[i1, j1, :], parameters[s1, :]))
+                edge_potential = beta[(i1, j1, s1)] + (np.dot(self.x[i1, j1, :], parameters[s1, :]))
                 beta[node] = edge_potential
-                beta[(i0, j0, s0)] += edge_potential * (np.exp(np.dot(self.x[i1, j1, :],
-                                                                      parameters[edge_parameter_index, :])))
+                beta[(i0, j0, s0)] = np.logaddexp(beta[(i0, j0, s0)],  edge_potential + ((np.dot(self.x[i1, j1, :],
+                                                                            parameters[edge_parameter_index, :]))))
         return beta
 
 
