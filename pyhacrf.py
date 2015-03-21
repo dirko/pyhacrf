@@ -98,8 +98,9 @@ class _Model(object):
 
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
-        alpha, log_predictions, Z = self._forward_probabilities(parameters)
+        alpha, class_Z, Z = self._forward_probabilities(parameters)
         beta = self._backward(parameters)
+        feature_shaped_ones = np.ones(parameters[1, :].shape)
 
         derivative = np.zeros(parameters.shape)
         for node in self._lattice:
@@ -108,29 +109,42 @@ class _Model(object):
                 in_class = 1.0 if self.states_to_classes[s] == self.y else 0.0
                 E_f = self.x[i, j, :] * in_class
                 E_Z = (alpha[node] * beta[node] * self.x[i, j, :]) / Z
-                print node, E_f, E_Z
+                print '{:20} {:10} [{:20}] {:10.2e} {:10.2e} {:10.2e} {:10.2e}'.format(node,
+                                                                                       E_f,
+                                                                                       ' '.join('{:.3e}'.format(e) for e in E_Z),
+                                                                                       alpha[node],
+                                                                                       beta[node],
+                                                                                       class_Z[self.y], Z)
                 derivative[s, :] += E_f - E_Z
 
             else:
                 i0, j0, s0, i1, j1, s1, edge_parameter_index = node
-                derivative[edge_parameter_index, :] += alpha[node] * self.x[i1, j1, :] * beta[(i1, j1, s1)] / Z
+                in_class = 1.0 if self.states_to_classes[s1] == self.y else 0.0
+                E_f = (alpha[node] * beta[node] * self.x[i1, j1, :]) / class_Z[self.y] * in_class
+                E_Z = (alpha[node] * beta[node] * self.x[i1, j1, :]) / Z
+                print '{:20} {:10} [{:20}] {:10.2e} {:10.2e} {:10.2e} {:10.2e}'.format(node,
+                                                                                       E_f,
+                                                                                       ' '.join('{:.3e}'.format(e) for e in E_Z),
+                                                                                       alpha[node],
+                                                                                       beta[node],
+                                                                                       class_Z[self.y], Z)
+                derivative[edge_parameter_index, :] += E_f - E_Z
 
-        return log_predictions[self.y], derivative
+        return np.emath.log(class_Z[self.y]) - np.emath.log(Z), derivative
 
     def _forward_probabilities(self, parameters):
         """ Helper to calculate the predicted probability distribution over classes given some parameters. """
         alpha = self._forward(parameters)
         I, J, _ = self.x.shape
 
-        predictions = {}
+        class_Z = {}
         Z = 0.0
 
         for state, predicted_class in self.states_to_classes.items():
             weight = alpha[(I - 1, J - 1, state)]
-            predictions[self.states_to_classes[state]] = weight
+            class_Z[self.states_to_classes[state]] = weight
             Z += weight
-        return alpha, {class_name: np.emath.log(prediction) - np.emath.log(Z)
-                       for class_name, prediction in predictions.iteritems()}, Z
+        return alpha, class_Z, Z
 
     def _forward(self, parameters):
         """ Helper to calculate the forward weights.  """

@@ -259,7 +259,7 @@ class TestModel(unittest.TestCase):
         expected_dll = np.zeros(parameters.shape)
 
         # Finite element approximation
-        delta = 10.0**-14
+        delta = 10.0**-7
         S, D = expected_dll.shape
         for s in xrange(S):
             for d in xrange(D):
@@ -268,7 +268,7 @@ class TestModel(unittest.TestCase):
                 y0, _ = test_model.forward_backward(parameters)
                 y1, _ = test_model.forward_backward(parameters + dg)
                 print s, d, y0, y1
-                expected_dll[s, d] = (np.exp(y1) - np.exp(y0)) / delta
+                expected_dll[s, d] = ((y1) - (y0)) / delta
 
         actual_ll, actual_dll = test_model.forward_backward(parameters)
 
