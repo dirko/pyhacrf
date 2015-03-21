@@ -15,9 +15,9 @@ class TestHacrf(unittest.TestCase):
                        (0, 1, (0, 1)),
                        (0, 0, (1, 0))]
         state_machine = (start_states, transitions)
-        X = [np.zeros((6, 7, 3))]
+        n_features = 3
 
-        actual_parameters = Hacrf._initialize_parameters(state_machine, X[0].shape[2])
+        actual_parameters = Hacrf._initialize_parameters(state_machine, n_features)
         expected_parameter_shape = (5, 3)
         self.assertEqual(actual_parameters.shape, expected_parameter_shape)
 
@@ -166,7 +166,6 @@ class TestModel(unittest.TestCase):
             self.assertAlmostEqual(actual_alpha[key], expected_alpha[key])
 
     def test_backward_connected(self):
-        classes = ['a', 'b']
         parameters = np.array(range(-3, 3)).reshape((3, 2))
         # parameters =
         #0 ([[-3, -2],
@@ -268,7 +267,7 @@ class TestModel(unittest.TestCase):
                 y0, _ = test_model.forward_backward(parameters)
                 y1, _ = test_model.forward_backward(parameters + dg)
                 print s, d, y0, y1
-                expected_dll[s, d] = ((y1) - (y0)) / delta
+                expected_dll[s, d] = (y1 - y0) / delta
 
         actual_ll, actual_dll = test_model.forward_backward(parameters)
 
@@ -278,6 +277,38 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(actual_ll, expected_ll)
         assert_array_almost_equal(actual_dll, expected_dll, decimal=5)
 
+    def test_derivate_medium(self):
+        classes = ['a', 'b']
+        parameters = np.array(range(-8, 8)).reshape((8, 2))
+        x = np.array([[[0, 1],
+                       [2, 1]],
+                      [[0, 1],
+                       [1, 0]]])
+        y = 'a'
+        state_machine, states_to_classes = Hacrf._default_state_machine(classes)
+        test_model = _Model(state_machine, states_to_classes, x, y)
+        print test_model._lattice
+        print states_to_classes
+
+        expected_dll = np.zeros(parameters.shape)
+
+        # Finite difference gradient approximation
+        delta = 10.0**-7
+        S, D = expected_dll.shape
+        for s in xrange(S):
+            for d in xrange(D):
+                dg = np.zeros(parameters.shape)
+                dg[s, d] = delta
+                y0, _ = test_model.forward_backward(parameters)
+                y1, _ = test_model.forward_backward(parameters + dg)
+                print s, d, y0, y1
+                expected_dll[s, d] = (y1 - y0) / delta
+
+        actual_ll, actual_dll = test_model.forward_backward(parameters)
+
+        print expected_dll
+        print actual_dll
+        assert_array_almost_equal(actual_dll, expected_dll, decimal=5)
 
 if __name__ == '__main__':
     unittest.main()

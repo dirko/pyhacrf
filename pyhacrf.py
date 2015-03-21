@@ -106,15 +106,15 @@ class _Model(object):
             if len(node) == 3:
                 i, j, s = node
                 in_class = 1.0 if self.states_to_classes[s] == self.y else 0.0
-                E_f = self.x[i, j, :] * in_class
+                E_f = alpha[node] * beta[node] / class_Z[self.y] * self.x[i, j, :] * in_class
                 E_Z = (alpha[node] * beta[node] * self.x[i, j, :]) / Z
                 derivative[s, :] += E_f - E_Z
 
             else:
                 i0, j0, s0, i1, j1, s1, edge_parameter_index = node
                 in_class = 1.0 if self.states_to_classes[s1] == self.y else 0.0
-                E_f = self.x[i1, j1, :] * in_class
-                E_Z = (alpha[node] * beta[node] * self.x[i1, j1, :]) / Z
+                E_f = (alpha[node] * beta[node] / class_Z[self.y]) * self.x[i1, j1, :] * in_class
+                E_Z = (alpha[node] * beta[node] / Z) * self.x[i1, j1, :]
                 derivative[edge_parameter_index, :] += E_f - E_Z
 
         return np.emath.log(class_Z[self.y]) - np.emath.log(Z), derivative
