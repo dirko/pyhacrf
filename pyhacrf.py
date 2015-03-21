@@ -105,12 +105,16 @@ class _Model(object):
         for node in self._lattice:
             if len(node) == 3:
                 i, j, s = node
-                derivative[s, :] += alpha[node] * self.x[i, j, :] * beta[node] / Z
+                in_class = 1.0 if self.states_to_classes[s] == self.y else 0.0
+                E_f = self.x[i, j, :] * in_class
+                E_Z = (alpha[node] * beta[node] * self.x[i, j, :]) / Z
+                print node, E_f, E_Z
+                derivative[s, :] += E_f - E_Z
+
             else:
                 i0, j0, s0, i1, j1, s1, edge_parameter_index = node
                 derivative[edge_parameter_index, :] += alpha[node] * self.x[i1, j1, :] * beta[(i1, j1, s1)] / Z
 
-        print 'log pred', log_predictions
         return log_predictions[self.y], derivative
 
     def _forward_probabilities(self, parameters):
@@ -155,16 +159,16 @@ class _Model(object):
             if len(node) == 3:
                 i, j, s = node
                 if i == I - 1 and j == J - 1:
-                    beta[node] = np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
+                    beta[node] = 1.0  # np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
                 else:
-                    beta[node] *= np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
+                    beta[node] *= 1.0  # np.exp(np.dot(self.x[i, j, :], parameters[s, :]))
             else:
                 i0, j0, s0, i1, j1, s1, edge_parameter_index = node  # Actually an edge in this case
                 # Use the features at the destination of the edge.
-                edge_potential = (np.exp(np.dot(self.x[i1, j1, :], parameters[edge_parameter_index, :]))
-                                  * beta[(i1, j1, s1)])
+                edge_potential = beta[(i1, j1, s1)] * np.exp(np.dot(self.x[i1, j1, :], parameters[s1, :]))
                 beta[node] = edge_potential
-                beta[(i0, j0, s0)] += edge_potential
+                beta[(i0, j0, s0)] += edge_potential * (np.exp(np.dot(self.x[i1, j1, :],
+                                                                      parameters[edge_parameter_index, :])))
         return beta
 
 

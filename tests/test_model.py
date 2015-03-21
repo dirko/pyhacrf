@@ -178,14 +178,14 @@ class TestModel(unittest.TestCase):
                        [1, 0]]])
         y = 'a'
         expected_beta = {
-            (0, 0, 0): (np.exp(-4) + np.exp(-12)) * np.exp(-2),
-            (0, 0, 0, 0, 1, 0, 1): np.exp(-3) * np.exp(1) * np.exp(-8) * np.exp(-2),
-            (0, 0, 0, 1, 0, 0, 2): np.exp(-3) * np.exp(-1) * np.exp(-2) * np.exp(2),
-            (0, 1, 0): np.exp(-3) * np.exp(1) * np.exp(-8),
-            (0, 1, 0, 1, 1, 0, 2): np.exp(-3) * np.exp(1),
-            (1, 0, 0): np.exp(-3) * np.exp(-1) * np.exp(-2),
-            (1, 0, 0, 1, 1, 0, 1): np.exp(-3) * np.exp(-1),
-            (1, 1, 0): np.exp(-3)
+            (0, 0, 0): (np.exp(-4) + np.exp(-12)),  # * np.exp(-2),
+            (0, 0, 0, 0, 1, 0, 1): np.exp(-3) * np.exp(1) * np.exp(-8),  # * np.exp(-2),
+            (0, 0, 0, 1, 0, 0, 2): np.exp(-3) * np.exp(-1) * np.exp(-2),  # * np.exp(2),
+            (0, 1, 0): np.exp(-3) * np.exp(1),  # * np.exp(-8),
+            (0, 1, 0, 1, 1, 0, 2): np.exp(-3),  # * np.exp(1),
+            (1, 0, 0): np.exp(-3) * np.exp(-1),  # * np.exp(-2),
+            (1, 0, 0, 1, 1, 0, 1): np.exp(-3),  # * np.exp(-1),
+            (1, 1, 0): 1.0  # np.exp(-3)
         }
         state_machine = ([0], [(0, 0, (0, 1)), (0, 0, (1, 0))])
         states_to_classes = {0: 'a'}
@@ -197,6 +197,7 @@ class TestModel(unittest.TestCase):
             print s
         actual_beta = test_model._backward(parameters)
 
+        print
         self.assertEqual(len(actual_beta), len(expected_beta))
         for key in sorted(expected_beta.keys(), reverse=True):
             print key, expected_beta[key], actual_beta[key]
@@ -217,8 +218,10 @@ class TestModel(unittest.TestCase):
 
         print actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)]
         print actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)]
-        self.assertAlmostEqual(actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)])
-        self.assertAlmostEqual(actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)])
+        self.assertAlmostEqual(actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)] * np.exp(np.dot(x[0, 0, :],
+                                                                                               parameters[0, :])))
+        self.assertAlmostEqual(actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)] * np.exp(np.dot(x[0, 0, :],
+                                                                                               parameters[1, :])))
 
     def test_derivate_chain(self):
         classes = ['a', 'b']
@@ -256,13 +259,16 @@ class TestModel(unittest.TestCase):
         expected_dll = np.zeros(parameters.shape)
 
         # Finite element approximation
-        delta = 10.0**-15
-        for i in xrange(len(expected_dll)):
-            dg = np.zeros(parameters.shape)
-            dg[i] = delta
-            y0, _ = test_model.forward_backward(parameters)
-            y1, _ = test_model.forward_backward(parameters + dg)
-            expected_dll[i] = (np.exp(y1) - np.exp(y0)) / delta
+        delta = 10.0**-14
+        S, D = expected_dll.shape
+        for s in xrange(S):
+            for d in xrange(D):
+                dg = np.zeros(parameters.shape)
+                dg[s, d] = delta
+                y0, _ = test_model.forward_backward(parameters)
+                y1, _ = test_model.forward_backward(parameters + dg)
+                print s, d, y0, y1
+                expected_dll[s, d] = (np.exp(y1) - np.exp(y0)) / delta
 
         actual_ll, actual_dll = test_model.forward_backward(parameters)
 
