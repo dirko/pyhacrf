@@ -18,6 +18,7 @@ class Hacrf(object):
     def __init__(self):
         self._optimizer_result = None
         self.parameters = None
+        # TODO: add regularizer
 
     def fit(self, X, y):
         """Fit the model according to the given training data.
@@ -42,7 +43,7 @@ class Hacrf(object):
         if len(X) != n_points:
             raise Exception('Number of training points should be the same as training labels.')
 
-        # Default state machine. Tuple (list_of_states, list_of_transitions)
+        # Default state machine.
         state_machine, states_to_classes = self._default_state_machine(classes)
 
         # Initialize the parameters given the state machine, features, and target classes.
@@ -57,6 +58,7 @@ class Hacrf(object):
             # TODO: Embarrassingly parallel
             for model in models:
                 dll, dgradient = model.forward_backward(parameters)
+                # TODO: regularize
                 ll += dll
                 gradient += dgradient
             return -ll, -gradient
@@ -85,6 +87,86 @@ class Hacrf(object):
                  [(i, i, (0, 1)) for i in xrange(n_classes)] +  # Insertion
                  [(i, i, (1, 0)) for i in xrange(n_classes)]),  # Deletion
                 dict((i, c) for i, c in enumerate(classes)))
+
+
+class StringPairFeatureExtractor(object):
+    """ Extract features from sequence pairs.
+
+    A grid is constructed for each sequence pair, for example for ("kaas", "cheese"):
+
+     s * . . . @ .
+     a * . . . . .
+     a * . . . . .
+     k * * * * * *
+       c h e e s e
+
+    For each element in the grid, a feature vector is constructed. The elements in the feature
+    vector is determined by which features are active at that position in the grid. So for the
+    example above, the 'match' feature will be 0 in every vector in every position except the
+    position indicated with '@', where it will be 1. The 'start' feature will be 1 in all the
+    positions with '*' and 0 everywhere else.
+
+
+    Parameters
+    ----------
+    start: boolean: optional
+        Binary feature that activates at the start of either sequence.
+
+    end: boolean: optional
+        Binary feature that activates at the end of either sequence.
+
+    match: boolean: optional
+        Binary feature that activates when elements at a position are equal.
+
+    numeric: boolean, optional
+        Binary feature that activates when all elements at a position are numerical.
+
+    transition: boolean, optional
+        Adds binary features for pairs of (lower case) input characters.
+    """
+
+    def __init__(self, start=False, end=False, match=False, numeric=False, transition=False):
+        binary_features_active = [start, end, match, numeric]
+        binary_features = [lambda i, j, s1, s2: 1.0 if i == 0 or j == 0 else 0.0,
+                           lambda i, j, s1, s2: 1.0 if i == len(s1) - 1 or j == len(s2) - 1 else 0.0,
+                           lambda i, j, s1, s2: 1.0 if s1[i] == s2[j] else 0.0,
+                           lambda i, j, s1, s2: 1.0 if s1[i].isdigit() and s2[j].isdigit() else 0.0]
+        features = [feature for feature, active in zip(binary_features, binary_features_active) if active]
+        characters = 'abcdefghijklmnopqrstuvwxyz0123456789,./;\'\-=<>?:"|_+!@#$%^&*() '
+        if transition:
+            features.extend([lambda i, j, s1, s2:
+                             1.0 if s1[i].lower() == character1 and s2[j].lower() == character2 else 0.0
+                             for character1 in characters for character2 in characters])
+
+        self.features = features
+
+    def fit_transform(self, raw_X, y=None):
+        """Transform sequence pairs to feature arrays that can be used as input to `Hacrf` models.
+
+        Parameters
+        ----------
+        raw_X : List of (sequence1_n, sequence2_n) pairs, one for each training example n.
+        y : (ignored)
+
+        Returns
+        -------
+         X : List of numpy ndarrays, each with shape = (I_n, J_n, K), where I_n is the length of sequence1_n, J_n is the
+            length of sequence2_n, and K is the number of features.
+            Feature matrix list, for use with estimators or further transformers.
+        """
+        return [self._extract_features(sequence1, sequence2) for sequence1, sequence2 in raw_X]
+
+    def _extract_features(self, sequence1, sequence2):
+        """ Helper to extract features for one data point. """
+        I = len(sequence1)
+        J = len(sequence2)
+        K = len(self.features)
+        feature_array = np.zeros((I, J, K))
+        for i in xrange(I):
+            for j in xrange(J):
+                for k, feature_function in enumerate(self.features):
+                    feature_array[i, j, k] = feature_function(i, j, sequence1, sequence2)
+        return feature_array
 
 
 class _Model(object):

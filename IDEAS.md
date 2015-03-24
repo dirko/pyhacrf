@@ -115,3 +115,7 @@ We need a lattice for each class or a way to link each node and edge with a clas
 more general the start state must then belong to one class, which breaks te symmetry. Possible solution is to
 allow more than one start state.
 
+## Feature extraction
+
+Must take list of iterable pairs and return a list of 3 dimensional ndarrays.
+
