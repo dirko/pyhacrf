@@ -7,6 +7,7 @@ import numpy as np
 from numpy import random
 from pyhacrf import Hacrf
 from pyhacrf import _Model
+from pyhacrf import StringPairFeatureExtractor
 
 
 class TestHacrf(unittest.TestCase):
@@ -35,6 +36,44 @@ class TestHacrf(unittest.TestCase):
         actual_state_machine, actual_states_to_classes = Hacrf._default_state_machine(classes)
         self.assertEqual(actual_state_machine, expected_state_machine)
         self.assertEqual(actual_states_to_classes, expected_states_to_classes)
+
+    def test_fit_predict(self):
+        incorrect = ['helloooo', 'freshh', 'ffb', 'h0me', 'wonderin', 'relaionship', 'hubby', 'krazii', 'mite', 'tropic']
+        correct = ['hello', 'fresh', 'facebook', 'home', 'wondering', 'relationship', 'husband', 'crazy', 'might', 'topic']
+        training = zip(incorrect, correct)
+
+        fe = StringPairFeatureExtractor(match=True, numeric=True)
+        xf = fe.fit_transform(training)
+
+        model = Hacrf()
+        model.fit(xf, [0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
+
+        expected_parameters = np.array([[-16.1732181, 0.],
+                                        [-17.35352106, 0.],
+                                        [38.16274664, 0.],
+                                        [-79.46057798, 0.],
+                                        [20.28907, 0.],
+                                        [39.57470153, 0.],
+                                        [17.7325127, 0.],
+                                        [-69.82519205, 0.]])
+        assert_array_almost_equal(model.parameters, expected_parameters)
+
+        expected_probas = np.array([[0.99432337, 0.00567663],
+                                    [0.88120021, 0.11879979],
+                                    [0.60675528, 0.39324472],
+                                    [0.55136157, 0.44863843],
+                                    [0.39144068, 0.60855932],
+                                    [0.09666619, 0.90333381],
+                                    [0.62457777, 0.37542223],
+                                    [0.33293155, 0.66706845],
+                                    [0.29060682, 0.70939318],
+                                    [0.56308584, 0.43691416]])
+        actual_predict_probas = model.predict_proba(xf)
+        assert_array_almost_equal(actual_predict_probas, expected_probas)
+
+        expected_predictions = np.array([0, 0, 0, 0, 1, 1, 0, 1, 1, 0])
+        actual_predictions = model.predict(xf)
+        assert_array_almost_equal(actual_predictions, expected_predictions)
 
 
 class TestModel(unittest.TestCase):

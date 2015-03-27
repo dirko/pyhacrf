@@ -110,7 +110,7 @@ class Hacrf(object):
 
         Returns
         -------
-        y : array of shape = [n_samples]
+        y : iterable of shape = [n_samples]
             The predicted classes.
         """
         return [self.classes[prediction.argmax()] for prediction in self.predict_proba(X)]
