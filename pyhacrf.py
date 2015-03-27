@@ -125,6 +125,9 @@ class StringPairFeatureExtractor(object):
         Adds binary features for pairs of (lower case) input characters.
     """
 
+    # Constants
+    CHARACTERS = 'abcdefghijklmnopqrstuvwxyz0123456789,./;\'\-=<>?:"|_+!@#$%^&*() '
+
     def __init__(self, start=False, end=False, match=False, numeric=False, transition=False):
         binary_features_active = [start, end, match, numeric]
         binary_features = [lambda i, j, s1, s2: 1.0 if i == 0 or j == 0 else 0.0,
@@ -132,11 +135,10 @@ class StringPairFeatureExtractor(object):
                            lambda i, j, s1, s2: 1.0 if s1[i] == s2[j] else 0.0,
                            lambda i, j, s1, s2: 1.0 if s1[i].isdigit() and s2[j].isdigit() else 0.0]
         features = [feature for feature, active in zip(binary_features, binary_features_active) if active]
-        characters = 'abcdefghijklmnopqrstuvwxyz0123456789,./;\'\-=<>?:"|_+!@#$%^&*() '
         if transition:
-            features.extend([lambda i, j, s1, s2:
-                             1.0 if s1[i].lower() == character1 and s2[j].lower() == character2 else 0.0
-                             for character1 in characters for character2 in characters])
+            features.extend([(lambda i, j, s1, s2, char1=character1, char2=character2:
+                              1.0 if s1[i] == char1 and s2[j] == char2 else 0.0)
+                             for character1 in self.CHARACTERS for character2 in self.CHARACTERS])
 
         self.features = features
 
