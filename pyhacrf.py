@@ -16,8 +16,12 @@ class Hacrf(object):
     """
 
     def __init__(self):
-        self._optimizer_result = None
         self.parameters = None
+        self.classes = None
+
+        self._optimizer_result = None
+        self._state_machine = None
+        self._states_to_classes = None
         # TODO: add regularizer
 
     def fit(self, X, y):
@@ -38,39 +42,78 @@ class Hacrf(object):
         self : object
             Returns self.
         """
-        classes = list(set(y))
+        self.classes = list(set(y))
         n_points = len(y)
         if len(X) != n_points:
             raise Exception('Number of training points should be the same as training labels.')
 
         # Default state machine.
-        state_machine, states_to_classes = self._default_state_machine(classes)
+        self._state_machine, self._states_to_classes = self._default_state_machine(self.classes)
 
         # Initialize the parameters given the state machine, features, and target classes.
-        self.parameters = self._initialize_parameters(state_machine, X[0].shape[2])
+        self.parameters = self._initialize_parameters(self._state_machine, X[0].shape[2])
 
         # Create a new model object for each training example
-        models = [_Model(state_machine, states_to_classes, x, ty) for x, ty in zip(X, y)]
+        models = [_Model(self._state_machine, self._states_to_classes, x, ty) for x, ty in zip(X, y)]
+        print self._state_machine, self._states_to_classes, self.parameters.shape
 
         def _objective(parameters):
             gradient = np.zeros(self.parameters.shape)
             ll = 0.0  # Log likelihood
             # TODO: Embarrassingly parallel
             for model in models:
-                dll, dgradient = model.forward_backward(parameters)
+                dll, dgradient = model.forward_backward(parameters.reshape(self.parameters.shape))
                 # TODO: regularize
                 ll += dll
                 gradient += dgradient
-            return -ll, -gradient
+            return -ll, -gradient.flatten()
 
         self._optimizer_result = fmin_l_bfgs_b(_objective, self.parameters)
+        self.parameters = self._optimizer_result[0].reshape(self.parameters.shape)
         return self
 
-    def predict_proba(self):
-        pass
+    def predict_proba(self, X):
+        """Probability estimates.
 
-    def predict(self):
-        pass
+        The returned estimates for all classes are ordered by the
+        label of classes.
+
+        Parameters
+        ----------
+        X : List of ndarrays, one for each training example.
+            Each training example's shape is (string1_len, string2_len, n_features, where
+            string1_len and string2_len are the length of the two training strings and n_features the
+            number of features.
+
+        Returns
+        -------
+        T : array-like, shape = [n_samples, n_classes]
+            Returns the probability of the sample for each class in the model,
+            where classes are ordered as they are in ``self.classes_``.
+        """
+        class_to_index = {class_name: index for index, class_name in enumerate(self.classes)}
+        return np.array(
+            [zip(*sorted(_Model(self._state_machine, self._states_to_classes, x).predict(self.parameters).items(),
+                         key=lambda item: class_to_index[item[0]]))[1] for x in X])
+
+    def predict(self, X):
+        """Predict the class for X.
+
+        The predicted class for each sample in X is returned.
+
+        Parameters
+        ----------
+        X : List of ndarrays, one for each training example.
+            Each training example's shape is (string1_len, string2_len, n_features, where
+            string1_len and string2_len are the length of the two training strings and n_features the
+            number of features.
+
+        Returns
+        -------
+        y : array of shape = [n_samples]
+            The predicted classes.
+        """
+        return [self.classes[prediction.argmax()] for prediction in self.predict_proba(X)]
 
     @staticmethod
     def _initialize_parameters(state_machine, n_features):
@@ -173,7 +216,7 @@ class StringPairFeatureExtractor(object):
 
 class _Model(object):
     """ The actual model that implements the inference routines. """
-    def __init__(self, state_machine, states_to_classes, x, y):
+    def __init__(self, state_machine, states_to_classes, x, y=None):
         self.state_machine = state_machine
         self.states_to_classes = states_to_classes
         self.x = x
@@ -201,6 +244,11 @@ class _Model(object):
                 derivative[edge_parameter_index, :] += E_f - E_Z
 
         return (class_Z[self.y]) - (Z), derivative
+
+    def predict(self, parameters):
+        """ Run forward algorithm to find the predicted distribution over classes. """
+        _, class_Z, Z = self._forward_probabilities(parameters)
+        return {label: np.exp(class_z - Z) for label, class_z in class_Z.iteritems()}
 
     def _forward_probabilities(self, parameters):
         """ Helper to calculate the predicted probability distribution over classes given some parameters. """
