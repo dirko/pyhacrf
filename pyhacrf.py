@@ -19,11 +19,12 @@ class Hacrf(object):
         self.parameters = None
         self.classes = None
         self.l2_regularization = l2_regularization
+        # TODO: make it possible to add own state machine / provide alternative state machines.
 
         self._optimizer_result = None
         self._state_machine = None
         self._states_to_classes = None
-        # TODO: add regularizer
+        self._evaluation_count = None
 
     def fit(self, X, y, verbosity=0):
         """Fit the model according to the given training data.
@@ -57,7 +58,7 @@ class Hacrf(object):
         # Create a new model object for each training example
         models = [_Model(self._state_machine, self._states_to_classes, x, ty) for x, ty in zip(X, y)]
 
-        self.num_evaluations = 0
+        self._evaluation_count = 0
 
         def _objective(parameters):
             gradient = np.zeros(self.parameters.shape)
@@ -65,7 +66,6 @@ class Hacrf(object):
             # TODO: Embarrassingly parallel
             for model in models:
                 dll, dgradient = model.forward_backward(parameters.reshape(self.parameters.shape))
-                # TODO: regularize
                 ll += dll
                 gradient += dgradient
 
@@ -73,9 +73,9 @@ class Hacrf(object):
             gradient = gradient.flatten() - 2.0 * self.l2_regularization * parameters
 
             if verbosity > 0:
-                if self.num_evaluations % verbosity == 0:
-                    print('{:10} {:10.4} {:10.4}'.format(self.num_evaluations, ll, (abs(gradient).sum())))
-            self.num_evaluations += 1
+                if self._evaluation_count % verbosity == 0:
+                    print('{:10} {:10.4} {:10.4}'.format(self._evaluation_count, ll, (abs(gradient).sum())))
+            self._evaluation_count += 1
 
             return -ll, -gradient
 
@@ -155,7 +155,7 @@ class StringPairFeatureExtractor(object):
        c h e e s e
 
     For each element in the grid, a feature vector is constructed. The elements in the feature
-    vector is determined by which features are active at that position in the grid. So for the
+    vector are determined by which features are active at that position in the grid. So for the
     example above, the 'match' feature will be 0 in every vector in every position except the
     position indicated with '@', where it will be 1. The 'start' feature will be 1 in all the
     positions with '*' and 0 everywhere else.
@@ -183,6 +183,9 @@ class StringPairFeatureExtractor(object):
     CHARACTERS = 'abcdefghijklmnopqrstuvwxyz0123456789,./;\'\-=<>?:"|_+!@#$%^&*() '
 
     def __init__(self, start=False, end=False, match=False, numeric=False, transition=False):
+        # TODO: For longer strings, tokenize and use Levenshtein distance up until a lattice position.
+        #       Other (possibly) useful features might be whether characters are consonant or vowel,
+        #       punctuation, case.
         binary_features_active = [start, end, match, numeric]
         binary_features = [lambda i, j, s1, s2: 1.0 if i == 0 or j == 0 else 0.0,
                            lambda i, j, s1, s2: 1.0 if i == len(s1) - 1 or j == len(s2) - 1 else 0.0,
@@ -193,7 +196,8 @@ class StringPairFeatureExtractor(object):
         if transition:
             characters_to_index = {character: index for index, character in enumerate(self.CHARACTERS)}
             self._sparse_features.append(((lambda i, j, s1, s2, chars_to_index=characters_to_index:
-                                           chars_to_index[s2[j]] + chars_to_index[s1[i]] * len(chars_to_index)),
+                                           chars_to_index[s2[j].lower()] +
+                                           chars_to_index[s1[i].lower()] * len(chars_to_index)),
                                           len(characters_to_index) ** 2))
 
     def fit_transform(self, raw_X, y=None):
