@@ -15,9 +15,10 @@ class Hacrf(object):
         and the report *Conditional Random Fields for Noisy text normalisation* by Dirko Coetsee.
     """
 
-    def __init__(self):
+    def __init__(self, l2_regularization=0.0):
         self.parameters = None
         self.classes = None
+        self.l2_regularization = l2_regularization
 
         self._optimizer_result = None
         self._state_machine = None
@@ -67,11 +68,16 @@ class Hacrf(object):
                 # TODO: regularize
                 ll += dll
                 gradient += dgradient
+
+            ll -= self.l2_regularization * np.dot(parameters.T, parameters)
+            gradient = gradient.flatten() - 2.0 * self.l2_regularization * parameters
+
             if verbosity > 0:
                 if self.num_evaluations % verbosity == 0:
                     print('{:10} {:10.4} {:10.4}'.format(self.num_evaluations, ll, (abs(gradient).sum())))
             self.num_evaluations += 1
-            return -ll, -gradient.flatten()
+
+            return -ll, -gradient
 
         self._optimizer_result = fmin_l_bfgs_b(_objective, self.parameters)
         self.parameters = self._optimizer_result[0].reshape(self.parameters.shape)
