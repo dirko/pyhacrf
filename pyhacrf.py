@@ -24,7 +24,7 @@ class Hacrf(object):
         self._states_to_classes = None
         # TODO: add regularizer
 
-    def fit(self, X, y):
+    def fit(self, X, y, verbosity=0):
         """Fit the model according to the given training data.
 
         Parameters
@@ -55,7 +55,8 @@ class Hacrf(object):
 
         # Create a new model object for each training example
         models = [_Model(self._state_machine, self._states_to_classes, x, ty) for x, ty in zip(X, y)]
-        print self._state_machine, self._states_to_classes, self.parameters.shape
+
+        self.num_evaluations = 0
 
         def _objective(parameters):
             gradient = np.zeros(self.parameters.shape)
@@ -66,6 +67,10 @@ class Hacrf(object):
                 # TODO: regularize
                 ll += dll
                 gradient += dgradient
+            if verbosity > 0:
+                if self.num_evaluations % verbosity == 0:
+                    print('{:10} {:10.4} {:10.4}'.format(self.num_evaluations, ll, (abs(gradient).sum())))
+            self.num_evaluations += 1
             return -ll, -gradient.flatten()
 
         self._optimizer_result = fmin_l_bfgs_b(_objective, self.parameters)
@@ -177,13 +182,13 @@ class StringPairFeatureExtractor(object):
                            lambda i, j, s1, s2: 1.0 if i == len(s1) - 1 or j == len(s2) - 1 else 0.0,
                            lambda i, j, s1, s2: 1.0 if s1[i] == s2[j] else 0.0,
                            lambda i, j, s1, s2: 1.0 if s1[i].isdigit() and s2[j].isdigit() else 0.0]
-        features = [feature for feature, active in zip(binary_features, binary_features_active) if active]
+        self._binary_features = [feature for feature, active in zip(binary_features, binary_features_active) if active]
+        self._sparse_features = []
         if transition:
-            features.extend([(lambda i, j, s1, s2, char1=character1, char2=character2:
-                              1.0 if s1[i] == char1 and s2[j] == char2 else 0.0)
-                             for character1 in self.CHARACTERS for character2 in self.CHARACTERS])
-
-        self.features = features
+            characters_to_index = {character: index for index, character in enumerate(self.CHARACTERS)}
+            self._sparse_features.append(((lambda i, j, s1, s2, chars_to_index=characters_to_index:
+                                           chars_to_index[s2[j]] + chars_to_index[s1[i]] * len(chars_to_index)),
+                                          len(characters_to_index) ** 2))
 
     def fit_transform(self, raw_X, y=None):
         """Transform sequence pairs to feature arrays that can be used as input to `Hacrf` models.
@@ -205,12 +210,16 @@ class StringPairFeatureExtractor(object):
         """ Helper to extract features for one data point. """
         I = len(sequence1)
         J = len(sequence2)
-        K = len(self.features)
+        K = len(self._binary_features) + sum(num_feats for _, num_feats in self._sparse_features)
         feature_array = np.zeros((I, J, K))
         for i in xrange(I):
             for j in xrange(J):
-                for k, feature_function in enumerate(self.features):
+                for k, feature_function in enumerate(self._binary_features):
                     feature_array[i, j, k] = feature_function(i, j, sequence1, sequence2)
+                k = len(self._binary_features)
+                for feature_function, num_features in self._sparse_features:
+                    feature_array[i, j, k + feature_function(i, j, sequence1, sequence2)] = 1.0
+                    k += num_features
         return feature_array
 
 
