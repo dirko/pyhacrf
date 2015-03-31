@@ -13,7 +13,7 @@ I also tried to use it as learnable string edit distance for normalizing noisy t
 See *A Conditional Random Field for Discriminatively-trained Finite-state String Edit Distance* by
 McCallum, Bellare, and Pereira, and the report *Conditional Random Fields for Noisy text normalisation* by Dirko Coetsee.
 
-# Example
+## Example
 
 ```python
 from pyhacrf import StringPairFeatureExtractor, Hacrf
@@ -53,11 +53,11 @@ print(model.predict_proba(training_X_extracted))
 >  [ 0.51091745  0.48908255]]
 ```
 
-# Dependencies
+## Dependencies
 This package depends on `numpy`. The LBFGS optimizer in `scipy` is used, although I
 plan to change it to a lighter dependency at some stage.
 
-# Install
+## Install
 Install by running:
 ```
 python setup.py install
