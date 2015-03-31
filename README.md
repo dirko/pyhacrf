@@ -62,3 +62,7 @@ Install by running:
 ```
 python setup.py install
 ```
+or from pypi:
+```
+pip install pyhacrf
+```
