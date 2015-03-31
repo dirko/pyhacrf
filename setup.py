@@ -5,6 +5,7 @@ setup(
     version='0.0.1',
     packages=['pyhacrf'],
     url='https://github.com/dirko/pyhacrf',
+    download_url='https://github.com/dirko/pyhacrf/tarball/0.0.1',
     license='BSD',
     author='Dirko Coetsee',
     author_email='dpcoetsee@gmail.com',
