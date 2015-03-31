@@ -11,8 +11,16 @@ from collections import defaultdict
 class Hacrf(object):
     """ Hidden Alignment Conditional Random Field with L2 regularizer.
 
-    See *A Conditional Random Field for Discriminatively-trained Finite-state String Edit Distance* by McCallum, Bellare, and Pereira,
-        and the report *Conditional Random Fields for Noisy text normalisation* by Dirko Coetsee.
+    Parameters
+    ----------
+    l2_regularization : float, optional (default=0.0)
+        The regularization parameter.
+
+    References
+    ----------
+    See *A Conditional Random Field for Discriminatively-trained Finite-state String Edit Distance*
+    by McCallum, Bellare, and Pereira, and the report *Conditional Random Fields for Noisy text normalisation*
+    by Dirko Coetsee.
     """
 
     def __init__(self, l2_regularization=0.0):
