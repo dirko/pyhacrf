@@ -2,10 +2,10 @@ from distutils.core import setup
 
 setup(
     name='pyhacrf',
-    version='0.0.1',
+    version='0.0.2',
     packages=['pyhacrf'],
     url='https://github.com/dirko/pyhacrf',
-    download_url='https://github.com/dirko/pyhacrf/tarball/0.0.1',
+    download_url='https://github.com/dirko/pyhacrf/tarball/0.0.2',
     license='BSD',
     author='Dirko Coetsee',
     author_email='dpcoetsee@gmail.com',
