@@ -4,6 +4,7 @@ setup(
     name='pyhacrf',
     version='0.0.2',
     packages=['pyhacrf'],
+    install_requires=['numpy>=1.9', 'PyLBFGS>=0.1.3'],
     url='https://github.com/dirko/pyhacrf',
     download_url='https://github.com/dirko/pyhacrf/tarball/0.0.2',
     license='BSD',
