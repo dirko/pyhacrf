@@ -16,6 +16,9 @@ class Hacrf(object):
     l2_regularization : float, optional (default=0.0)
         The regularization parameter.
 
+    max_iterations : int, optional (default=1000)
+        Maximum number of function evaluations to apply when fitting.
+
     References
     ----------
     See *A Conditional Random Field for Discriminatively-trained Finite-state String Edit Distance*
@@ -23,7 +26,7 @@ class Hacrf(object):
     by Dirko Coetsee.
     """
 
-    def __init__(self, l2_regularization=0.0):
+    def __init__(self, l2_regularization=0.0, max_iterations=1000):
         self.parameters = None
         self.classes = None
         self.l2_regularization = l2_regularization
@@ -33,6 +36,7 @@ class Hacrf(object):
         self._state_machine = None
         self._states_to_classes = None
         self._evaluation_count = None
+        self._maximum_iterations = max_iterations
 
     def fit(self, X, y, verbosity=0):
         """Fit the model according to the given training data.
@@ -40,7 +44,7 @@ class Hacrf(object):
         Parameters
         ----------
         X : List of ndarrays, one for each training example.
-            Each training example's shape is (string1_len, string2_len, n_features, where
+            Each training example's shape is (string1_len, string2_len, n_features), where
             string1_len and string2_len are the length of the two training strings and n_features the
             number of features.
 
@@ -81,13 +85,15 @@ class Hacrf(object):
             gradient = gradient.flatten() - 2.0 * self.l2_regularization * parameters
 
             if verbosity > 0:
+                if self._evaluation_count == 0:
+                    print('{:10} {:10} {:10}'.format('Iteration', 'Log-likelihood', '|gradient|'))
                 if self._evaluation_count % verbosity == 0:
                     print('{:10} {:10.4} {:10.4}'.format(self._evaluation_count, ll, (abs(gradient).sum())))
             self._evaluation_count += 1
 
             return -ll, -gradient
 
-        self._optimizer_result = fmin_l_bfgs_b(_objective, self.parameters)
+        self._optimizer_result = fmin_l_bfgs_b(_objective, self.parameters, maxfun=self._maximum_iterations)
         self.parameters = self._optimizer_result[0].reshape(self.parameters.shape)
         return self
 
@@ -150,6 +156,38 @@ class Hacrf(object):
                  [(i, i, (1, 0)) for i in xrange(n_classes)]),  # Deletion
                 dict((i, c) for i, c in enumerate(classes)))
 
+    def get_params(self, deep=True):
+        """Get parameters for this estimator.
+
+        Parameters
+        ----------
+        deep: boolean, optional
+            If True, will return the parameters for this estimator and
+            contained subobjects that are estimators.
+
+        Returns
+        -------
+        params : mapping of string to any
+            Parameter names mapped to their values.
+        """
+        return {'l2_regularization': self.l2_regularization, 'max_iterations': self._maximum_iterations}
+
+    def set_params(self, l2_regularization=0.0, max_iterations=1000):
+        """Set the parameters of this estimator.
+
+        The method works on simple estimators as well as on nested objects
+        (such as pipelines). The former have parameters of the form
+        ``<component>__<parameter>`` so that it's possible to update each
+        component of a nested object.
+
+        Returns
+        -------
+        self
+        """
+        self.l2_regularization = l2_regularization
+        self._maximum_iterations = max_iterations
+        return self
+
 
 class StringPairFeatureExtractor(object):
     """ Extract features from sequence pairs.
@@ -209,6 +247,22 @@ class StringPairFeatureExtractor(object):
                                           len(characters_to_index) ** 2))
 
     def fit_transform(self, raw_X, y=None):
+        """Like transform. Transform sequence pairs to feature arrays that can be used as input to `Hacrf` models.
+
+        Parameters
+        ----------
+        raw_X : List of (sequence1_n, sequence2_n) pairs, one for each training example n.
+        y : (ignored)
+
+        Returns
+        -------
+         X : List of numpy ndarrays, each with shape = (I_n, J_n, K), where I_n is the length of sequence1_n, J_n is the
+            length of sequence2_n, and K is the number of features.
+            Feature matrix list, for use with estimators or further transformers.
+        """
+        return self.transform(raw_X)
+
+    def transform(self, raw_X, y=None):
         """Transform sequence pairs to feature arrays that can be used as input to `Hacrf` models.
 
         Parameters
