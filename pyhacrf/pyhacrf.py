@@ -16,6 +16,16 @@ class Hacrf(object):
     l2_regularization : float, optional (default=0.0)
         The regularization parameter.
 
+    optimizer : function, optional (default=None)
+        The optimizing function that should be used minimize the negative log posterior.
+        The function should have the signature:
+            min_objective, argmin_objective, ... = fmin(obj, x0, **optimizer_kwargs),
+        where obj is a function that returns
+        the objective function and its gradient given a parameter vector; and x0 is the initial parameter vector.
+
+    optimizer_kwargs : dictionary, optional (default=None)
+        The keyword arguments to pass to the optimizing function. Only used when `optimizer` is also specified.
+
     References
     ----------
     See *A Conditional Random Field for Discriminatively-trained Finite-state String Edit Distance*
@@ -23,12 +33,15 @@ class Hacrf(object):
     by Dirko Coetsee.
     """
 
-    def __init__(self, l2_regularization=0.0):
+    def __init__(self, l2_regularization=0.0, optimizer=None, optimizer_kwargs=None):
         self.parameters = None
         self.classes = None
         self.l2_regularization = l2_regularization
+        self._optimizer = optimizer
+        self._optimizer_kwargs = optimizer_kwargs
         # TODO: make it possible to add own state machine / provide alternative state machines.
 
+        self.optimizer_result = None
         self._state_machine = None
         self._states_to_classes = None
         self._evaluation_count = None
@@ -67,7 +80,7 @@ class Hacrf(object):
 
         self._evaluation_count = 0
 
-        def _objective(parameters, g):
+        def _objective(parameters):
             gradient = np.zeros(self.parameters.shape)
             ll = 0.0  # Log likelihood
             # TODO: Embarrassingly parallel
@@ -86,14 +99,23 @@ class Hacrf(object):
                     print('{:10} {:10.4} {:10.4}'.format(self._evaluation_count, ll, (abs(gradient).sum())))
             self._evaluation_count += 1
 
-            g[:] = -gradient
-            return -ll
+            return -ll, -gradient
 
-        optimizer = lbfgs.LBFGS()
-        final_betas = optimizer.minimize(_objective,
-                                         x0=self.parameters.flatten(),
-                                         progress=None)
-        self.parameters = final_betas.reshape(self.parameters.shape)
+        def _objective_copy_gradient(paramers, g):
+            nll, ngradient = _objective(paramers)
+            g[:] = ngradient
+            return nll
+
+        if self._optimizer:
+            self.optimizer_result = self._optimizer(_objective, self.parameters.flatten(), **self._optimizer_kwargs)
+            self.parameters = self.optimizer_result[1]
+        else:
+            optimizer = lbfgs.LBFGS()
+            final_betas = optimizer.minimize(_objective_copy_gradient,
+                                             x0=self.parameters.flatten(),
+                                             progress=None)
+            self.optimizer_result = final_betas
+            self.parameters = final_betas.reshape(self.parameters.shape)
         return self
 
     def predict_proba(self, X):
@@ -169,22 +191,20 @@ class Hacrf(object):
         params : mapping of string to any
             Parameter names mapped to their values.
         """
-        return {'l2_regularization': self.l2_regularization, 'max_iterations': self._maximum_iterations}
+        return {'l2_regularization': self.l2_regularization,
+                'optimizer': self._optimizer,
+                'optimizer_kwargs': self._optimizer_kwargs}
 
-    def set_params(self, l2_regularization=0.0, max_iterations=1000):
+    def set_params(self, l2_regularization=0.0, optimizer=None, optimizer_kwargs=None):
         """Set the parameters of this estimator.
-
-        The method works on simple estimators as well as on nested objects
-        (such as pipelines). The former have parameters of the form
-        ``<component>__<parameter>`` so that it's possible to update each
-        component of a nested object.
 
         Returns
         -------
         self
         """
         self.l2_regularization = l2_regularization
-        self._maximum_iterations = max_iterations
+        self._optimizer = optimizer
+        self._optimizer_kwargs = optimizer_kwargs
         return self
 
 

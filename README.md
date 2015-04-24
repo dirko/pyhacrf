@@ -1,5 +1,5 @@
 # pyhacrf
-Hidden alignment conditional random field for classifying string pairs.
+Hidden alignment conditional random field for classifying string pairs - a learnable edit distance.
 
 This package aims to implement the HACRF machine learning model with a `sklearn`-like interface.
 It includes ways to fit a model to training examples and score new example.
@@ -54,8 +54,7 @@ print(model.predict_proba(training_X_extracted))
 ```
 
 ## Dependencies
-This package depends on `numpy`. The LBFGS optimizer in `scipy` is used, although I
-plan to change it to a lighter dependency at some stage.
+This package depends on `numpy`. The LBFGS optimizer in `pylbfgs` is used, but alternative optimizers can be passed.
 
 ## Install
 Install by running:
