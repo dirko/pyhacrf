@@ -4,7 +4,7 @@
 """ Implements a Hidden Alignment Conditional Random Field (HACRF). """
 
 import numpy as np
-from scipy.optimize import fmin_l_bfgs_b
+import lbfgs
 from collections import defaultdict
 
 
@@ -16,9 +16,6 @@ class Hacrf(object):
     l2_regularization : float, optional (default=0.0)
         The regularization parameter.
 
-    max_iterations : int, optional (default=1000)
-        Maximum number of function evaluations to apply when fitting.
-
     References
     ----------
     See *A Conditional Random Field for Discriminatively-trained Finite-state String Edit Distance*
@@ -26,17 +23,15 @@ class Hacrf(object):
     by Dirko Coetsee.
     """
 
-    def __init__(self, l2_regularization=0.0, max_iterations=1000):
+    def __init__(self, l2_regularization=0.0):
         self.parameters = None
         self.classes = None
         self.l2_regularization = l2_regularization
         # TODO: make it possible to add own state machine / provide alternative state machines.
 
-        self._optimizer_result = None
         self._state_machine = None
         self._states_to_classes = None
         self._evaluation_count = None
-        self._maximum_iterations = max_iterations
 
     def fit(self, X, y, verbosity=0):
         """Fit the model according to the given training data.
@@ -72,7 +67,7 @@ class Hacrf(object):
 
         self._evaluation_count = 0
 
-        def _objective(parameters):
+        def _objective(parameters, g):
             gradient = np.zeros(self.parameters.shape)
             ll = 0.0  # Log likelihood
             # TODO: Embarrassingly parallel
@@ -91,10 +86,14 @@ class Hacrf(object):
                     print('{:10} {:10.4} {:10.4}'.format(self._evaluation_count, ll, (abs(gradient).sum())))
             self._evaluation_count += 1
 
-            return -ll, -gradient
+            g[:] = -gradient
+            return -ll
 
-        self._optimizer_result = fmin_l_bfgs_b(_objective, self.parameters, maxfun=self._maximum_iterations)
-        self.parameters = self._optimizer_result[0].reshape(self.parameters.shape)
+        optimizer = lbfgs.LBFGS()
+        final_betas = optimizer.minimize(_objective,
+                                         x0=self.parameters.flatten(),
+                                         progress=None)
+        self.parameters = final_betas.reshape(self.parameters.shape)
         return self
 
     def predict_proba(self, X):
