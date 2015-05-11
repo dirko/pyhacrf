@@ -48,30 +48,32 @@ class TestHacrf(unittest.TestCase):
         model = Hacrf()
         model.fit(xf, [0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
 
-        expected_parameters = np.array([[-17.51533795, 0.],
-                                        [-18.69524307, 0.],
-                                        [30.67666593, 0.],
-                                        [-58.33252835, 0.],
-                                        [-11.15285167, 0.],
-                                        [32.08819364, 0.],
-                                        [19.07605554, 0.],
-                                        [-48.56611611, 0.]])
+        expected_parameters = np.array([[-10.76945326, 144.03414923, 0.],
+                                        [31.84369748, -106.41885651, 0.],
+                                        [-52.08919467, 4.56943665, 0.],
+                                        [31.01495044, -13.0593297, 0.],
+                                        [49.77302218, -6.42566204, 0.],
+                                        [-28.69877796, 24.47127009, 0.],
+                                        [-85.34524911, 21.87370646, 0.],
+                                        [106.41949333, 6.18587125, 0.]])
+        print model.parameters
         assert_array_almost_equal(model.parameters, expected_parameters)
 
-        expected_probas = np.array([[0.99434389, 0.00565611],
-                                    [0.88129637, 0.11870363],
-                                    [0.6068228, 0.3931772],
-                                    [0.5512828, 0.4487172],
-                                    [0.39140591, 0.60859409],
-                                    [0.096663, 0.903337],
-                                    [0.62465596, 0.37534404],
-                                    [0.33295602, 0.66704398],
-                                    [0.29054762, 0.70945238],
-                                    [0.56302809, 0.43697191]])
+        expected_probas = np.array([[1.00000000e+000, 3.51235685e-039],
+                                    [1.00000000e+000, 4.79716208e-039],
+                                    [1.00000000e+000, 2.82744641e-139],
+                                    [1.00000000e+000, 6.49580729e-012],
+                                    [9.99933798e-001, 6.62022561e-005],
+                                    [8.78935957e-005, 9.99912106e-001],
+                                    [4.84538335e-009, 9.99999995e-001],
+                                    [1.25170233e-250, 1.00000000e+000],
+                                    [2.46673086e-010, 1.00000000e+000],
+                                    [1.03521293e-033, 1.00000000e+000]])
         actual_predict_probas = model.predict_proba(xf)
+        print actual_predict_probas
         assert_array_almost_equal(actual_predict_probas, expected_probas)
 
-        expected_predictions = np.array([0, 0, 0, 0, 1, 1, 0, 1, 1, 0])
+        expected_predictions = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
         actual_predictions = model.predict(xf)
         assert_array_almost_equal(actual_predictions, expected_predictions)
 
@@ -87,31 +89,31 @@ class TestHacrf(unittest.TestCase):
         model.fit(xf, [0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
         print model.parameters
 
-        expected_parameters = np.array([[0.01296926, 0.],
-                                        [-0.01129518,  0.],
-                                        [-0.00318023, 0.],
-                                        [0.00307565, 0.],
-                                        [-0.00826215, 0.],
-                                        [0.00829558, 0.],
-                                        [0.00817973, 0.],
-                                        [-0.00643449, 0.]])
+        expected_parameters = np.array([[-0.0569188, 0.07413339, 0.],
+                                        [0.00187709, -0.06377866, 0.],
+                                        [-0.01908823, 0.00586189, 0.],
+                                        [0.01721114, -0.00636556, 0.],
+                                        [0.01578279, 0.0078614, 0.],
+                                        [-0.0139057, -0.00862948, 0.],
+                                        [-0.00623241, 0.02937325, 0.],
+                                        [0.00810951, -0.01774676, 0.]])
         assert_array_almost_equal(model.parameters, expected_parameters)
 
-        expected_probas = np.array([[0.52892329, 0.47107671],
-                                    [0.52303817, 0.47696183],
-                                    [0.50883838, 0.49116162],
-                                    [0.51503176, 0.48496824],
-                                    [0.52276791, 0.47723209],
-                                    [0.53109137, 0.46890863],
-                                    [0.51310507, 0.48689493],
-                                    [0.50826765, 0.49173235],
-                                    [0.51049301, 0.48950699],
-                                    [0.52208119, 0.47791881]])
+        expected_probas = np.array([[0.5227226, 0.4772774],
+                                    [0.52568993, 0.47431007],
+                                    [0.4547091, 0.5452909],
+                                    [0.51179222, 0.48820778],
+                                    [0.46347576, 0.53652424],
+                                    [0.45710098, 0.54289902],
+                                    [0.46159657, 0.53840343],
+                                    [0.42997978, 0.57002022],
+                                    [0.47419724, 0.52580276],
+                                    [0.50797852, 0.49202148]])
         actual_predict_probas = model.predict_proba(xf)
         print actual_predict_probas
         assert_array_almost_equal(actual_predict_probas, expected_probas)
 
-        expected_predictions = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        expected_predictions = np.array([0, 0, 1, 0, 1, 1, 1, 1, 1, 0])
         actual_predictions = model.predict(xf)
         assert_array_almost_equal(actual_predictions, expected_predictions)
 

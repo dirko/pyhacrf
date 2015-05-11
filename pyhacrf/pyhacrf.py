@@ -89,8 +89,10 @@ class Hacrf(object):
                 ll += dll
                 gradient += dgradient
 
-            ll -= self.l2_regularization * np.dot(parameters.T, parameters)
-            gradient = gradient.flatten() - 2.0 * self.l2_regularization * parameters
+            parameters_without_bias = np.array(parameters)  # exclude the bias parameters from being regularized
+            parameters_without_bias[0] = 0
+            ll -= self.l2_regularization * np.dot(parameters_without_bias.T, parameters_without_bias)
+            gradient = gradient.flatten() - 2.0 * self.l2_regularization * parameters_without_bias
 
             if verbosity > 0:
                 if self._evaluation_count == 0:
@@ -108,7 +110,7 @@ class Hacrf(object):
 
         if self._optimizer:
             self.optimizer_result = self._optimizer(_objective, self.parameters.flatten(), **self._optimizer_kwargs)
-            self.parameters = self.optimizer_result[1]
+            self.parameters = self.optimizer_result[0].reshape(self.parameters.shape)
         else:
             optimizer = lbfgs.LBFGS()
             final_betas = optimizer.minimize(_objective_copy_gradient,
@@ -228,6 +230,9 @@ class StringPairFeatureExtractor(object):
 
     Parameters
     ----------
+    bias: float: optional (default=1.0)
+        A bias term that is always added to every position in the lattice.
+
     start: boolean: optional
         Binary feature that activates at the start of either sequence.
 
@@ -247,12 +252,13 @@ class StringPairFeatureExtractor(object):
     # Constants
     CHARACTERS = 'abcdefghijklmnopqrstuvwxyz0123456789,./;\'\-=<>?:"|_+!@#$%^&*() '
 
-    def __init__(self, start=False, end=False, match=False, numeric=False, transition=False):
+    def __init__(self, bias=1.0, start=False, end=False, match=False, numeric=False, transition=False):
         # TODO: For longer strings, tokenize and use Levenshtein distance up until a lattice position.
         #       Other (possibly) useful features might be whether characters are consonant or vowel,
         #       punctuation, case.
-        binary_features_active = [start, end, match, numeric]
-        binary_features = [lambda i, j, s1, s2: 1.0 if i == 0 or j == 0 else 0.0,
+        binary_features_active = [True, start, end, match, numeric]
+        binary_features = [lambda i, j, s1, s2: bias,
+                           lambda i, j, s1, s2: 1.0 if i == 0 or j == 0 else 0.0,
                            lambda i, j, s1, s2: 1.0 if i == len(s1) - 1 or j == len(s2) - 1 else 0.0,
                            lambda i, j, s1, s2: 1.0 if s1[i] == s2[j] else 0.0,
                            lambda i, j, s1, s2: 1.0 if s1[i].isdigit() and s2[j].isdigit() else 0.0]
