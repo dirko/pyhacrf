@@ -191,7 +191,8 @@ class TestModel(unittest.TestCase):
         }
         expected_alpha = {k: np.emath.log(v) for k, v in expected_alpha.items()}
         test_model = _Model(state_machine, states_to_classes, x, y)
-        actual_alpha = test_model._forward(parameters)
+        x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
+        actual_alpha = test_model._forward(x_dot_parameters)
 
         self.assertEqual(len(actual_alpha), len(expected_alpha))
         print
@@ -243,7 +244,8 @@ class TestModel(unittest.TestCase):
         test_model = _Model(state_machine, states_to_classes, x, y)
         for s in test_model._lattice:
             print s
-        actual_alpha = test_model._forward(parameters)
+        x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
+        actual_alpha = test_model._forward(x_dot_parameters)
 
         self.assertEqual(len(actual_alpha), len(expected_alpha))
         for key in sorted(expected_alpha.keys()):
@@ -281,7 +283,8 @@ class TestModel(unittest.TestCase):
         test_model = _Model(state_machine, states_to_classes, x, y)
         for s in test_model._lattice:
             print s
-        actual_beta = test_model._backward(parameters)
+        x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
+        actual_beta = test_model._backward(x_dot_parameters)
 
         print
         self.assertEqual(len(actual_beta), len(expected_beta))
@@ -299,8 +302,9 @@ class TestModel(unittest.TestCase):
         y = 'a'
         state_machine, states_to_classes = Hacrf._default_state_machine(classes)
         test_model = _Model(state_machine, states_to_classes, x, y)
-        actual_alpha = test_model._forward(parameters)
-        actual_beta = test_model._backward(parameters)
+        x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
+        actual_alpha = test_model._forward(x_dot_parameters)
+        actual_beta = test_model._backward(x_dot_parameters)
 
         print actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)]
         print actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)]

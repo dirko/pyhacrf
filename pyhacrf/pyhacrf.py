@@ -331,8 +331,9 @@ class _Model(object):
 
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
-        alpha, class_Z, Z = self._forward_probabilities(parameters)
-        beta = self._backward(parameters)
+        x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
+        alpha, class_Z, Z = self._forward_probabilities(x_dot_parameters)
+        beta = self._backward(x_dot_parameters)
 
         derivative = np.zeros(parameters.shape)
         for node in self._lattice:
@@ -353,12 +354,13 @@ class _Model(object):
 
     def predict(self, parameters):
         """ Run forward algorithm to find the predicted distribution over classes. """
-        _, class_Z, Z = self._forward_probabilities(parameters)
+        x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
+        _, class_Z, Z = self._forward_probabilities(x_dot_parameters)
         return {label: np.exp(class_z - Z) for label, class_z in class_Z.iteritems()}
 
-    def _forward_probabilities(self, parameters):
+    def _forward_probabilities(self, x_dot_parameters):
         """ Helper to calculate the predicted probability distribution over classes given some parameters. """
-        alpha = self._forward(parameters)
+        alpha = self._forward(x_dot_parameters)
         I, J, _ = self.x.shape
 
         class_Z = {}
@@ -370,26 +372,27 @@ class _Model(object):
             Z = np.logaddexp(Z, weight)
         return alpha, class_Z, Z
 
-    def _forward(self, parameters):
+    def _forward(self, x_dot_parameters):
         """ Helper to calculate the forward weights.  """
         alpha = defaultdict(lambda: -np.inf)
+
         for node in self._lattice:
             if len(node) == 3:
                 i, j, s = node
                 if i == 0 and j == 0:
-                    alpha[node] = (np.dot(self.x[i, j, :], parameters[s, :]))
+                    alpha[node] = x_dot_parameters[i, j, s]
                 else:
-                    alpha[node] += (np.dot(self.x[i, j, :], parameters[s, :]))
+                    alpha[node] += x_dot_parameters[i, j, s]
             else:
                 i0, j0, s0, i1, j1, s1, edge_parameter_index = node  # Actually an edge in this case
                 # Use the features at the destination of the edge.
-                edge_potential = ((np.dot(self.x[i1, j1, :], parameters[edge_parameter_index, :]))
+                edge_potential = (x_dot_parameters[i1, j1, edge_parameter_index]
                                   + alpha[(i0, j0, s0)])
                 alpha[node] = edge_potential
                 alpha[(i1, j1, s1)] = np.logaddexp(alpha[(i1, j1, s1)], edge_potential)
         return alpha
 
-    def _backward(self, parameters):
+    def _backward(self, x_dot_parameters):
         """ Helper to calculate the backward weights.  """
         beta = defaultdict(lambda: -np.inf)
         I, J, _ = self.x.shape
@@ -401,11 +404,10 @@ class _Model(object):
             else:
                 i0, j0, s0, i1, j1, s1, edge_parameter_index = node  # Actually an edge in this case
                 # Use the features at the destination of the edge.
-                edge_potential = beta[(i1, j1, s1)] + (np.dot(self.x[i1, j1, :], parameters[s1, :]))
+                edge_potential = beta[(i1, j1, s1)] + (x_dot_parameters[i1, j1, s1])
                 beta[node] = edge_potential
                 beta[(i0, j0, s0)] = np.logaddexp(beta[(i0, j0, s0)],
-                                                  edge_potential + (
-                                                  (np.dot(self.x[i1, j1, :], parameters[edge_parameter_index, :]))))
+                                                  edge_potential + x_dot_parameters[i1, j1, edge_parameter_index])
         return beta
 
 
@@ -465,3 +467,4 @@ def _n_states(state_machine):
     max_state = max(max(s for s, _, _ in edges), max(s for _, s, _ in edges)) + 1
     n_transitions = len(state_machine[1])
     return max_state, n_transitions
+
