@@ -1,6 +1,7 @@
 from distutils.core import setup
 from codecs import open
 from os import path
+from Cython.Build import cythonize
 
 here = path.abspath(path.dirname(__file__))
 
@@ -13,6 +14,7 @@ setup(
     version='0.0.6',
     packages=['pyhacrf'],
     install_requires=['numpy>=1.9', 'PyLBFGS>=0.1.3'],
+    ext_modules=cythonize('pyhacrf/algorithms.pyx'),
     url='https://github.com/dirko/pyhacrf',
     download_url='https://github.com/dirko/pyhacrf/tarball/0.0.6',
     license='BSD',

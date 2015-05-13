@@ -6,6 +6,7 @@
 import numpy as np
 import lbfgs
 from collections import defaultdict
+from algorithms import forward, backward
 
 
 class Hacrf(object):
@@ -374,43 +375,12 @@ class _Model(object):
 
     def _forward(self, x_dot_parameters):
         """ Helper to calculate the forward weights.  """
-        alpha = defaultdict(lambda: -np.inf)
-
-        for node in self._lattice:
-            if len(node) == 3:
-                i, j, s = node
-                if i == 0 and j == 0:
-                    alpha[node] = x_dot_parameters[i, j, s]
-                else:
-                    alpha[node] += x_dot_parameters[i, j, s]
-            else:
-                i0, j0, s0, i1, j1, s1, edge_parameter_index = node  # Actually an edge in this case
-                # Use the features at the destination of the edge.
-                edge_potential = (x_dot_parameters[i1, j1, edge_parameter_index]
-                                  + alpha[(i0, j0, s0)])
-                alpha[node] = edge_potential
-                alpha[(i1, j1, s1)] = np.logaddexp(alpha[(i1, j1, s1)], edge_potential)
-        return alpha
+        return forward(self._lattice, x_dot_parameters)
 
     def _backward(self, x_dot_parameters):
         """ Helper to calculate the backward weights.  """
-        beta = defaultdict(lambda: -np.inf)
         I, J, _ = self.x.shape
-        for node in reversed(self._lattice):
-            if len(node) == 3:
-                i, j, s = node
-                if i == I - 1 and j == J - 1:
-                    beta[node] = 0.0
-            else:
-                i0, j0, s0, i1, j1, s1, edge_parameter_index = node  # Actually an edge in this case
-                # Use the features at the destination of the edge.
-                edge_potential = beta[(i1, j1, s1)] + (x_dot_parameters[i1, j1, s1])
-                beta[node] = edge_potential
-                beta[(i0, j0, s0)] = np.logaddexp(beta[(i0, j0, s0)],
-                                                  edge_potential + x_dot_parameters[i1, j1, edge_parameter_index])
-        return beta
-
-
+        return backward(self._lattice, x_dot_parameters, I, J)
 
     @staticmethod
     def _build_lattice(x, state_machine):
