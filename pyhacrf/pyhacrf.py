@@ -5,7 +5,7 @@
 
 import numpy as np
 import lbfgs
-from collections import defaultdict
+from collections import defaultdict, deque
 from .algorithms import forward, backward
 
 
@@ -383,52 +383,54 @@ class _Model(object):
         return backward(self._lattice, x_dot_parameters, I, J)
 
     @staticmethod
+    #@profile
     def _build_lattice(x, state_machine):
         """ Helper to construct the list of nodes and edges. """
         I, J, _ = x.shape
         lattice = []
         start_states, transitions = state_machine
+        transitions_d = defaultdict(list)
+        for transition_index, (s0, s1, delta) in enumerate(transitions) :
+            transitions_d[s0].append((s1, delta, transition_index))
         # Add start states
-        unvisited_nodes = [(0, 0, s) for s in start_states]
+        unvisited_nodes = deque([(0, 0, s) for s in start_states])
         visited_nodes = set()
         n_states, _ = _n_states(state_machine)
 
         while unvisited_nodes:
-            i, j, s = unvisited_nodes.pop(0)
-            if (i, j, s) not in visited_nodes:
-                lattice.append((i, j, s))
-                visited_nodes.add((i, j, s))
-            for transition_index, (s0, s1, delta) in enumerate(transitions):
-                if s == s0:
-                    if callable(delta):
-                        di, dj = delta(i, j, x)
-                    else:
-                        di, dj = delta
-                    if i + di < I and j + dj < J:
-                        edge = (i, j, s0, i + di, j + dj, s1, transition_index + n_states)
-                        if edge not in visited_nodes:
-                            lattice.append(edge)
-                            unvisited_nodes.append((i + di, j + dj, s1))
-                            visited_nodes.add(edge)
+            node = unvisited_nodes.popleft()
+            lattice.append(node)
+            i, j, s0 = node
+            for s1, delta, transition_index in transitions_d[s0] :
+                try :
+                    di, dj = delta
+                except TypeError :
+                    di, dj = delta(i, j, x)
+
+                if i + di < I and j + dj < J:
+                    edge = (i, j, s0, i + di, j + dj, s1, transition_index + n_states)
+                    lattice.append(edge)
+                    dest_node = (i + di, j + dj, s1)
+                    if dest_node not in visited_nodes :
+                        unvisited_nodes.append(dest_node)
+                        visited_nodes.add(dest_node)
+
         lattice.sort()
 
         # Step backwards through lattice and add visitable nodes to the set of nodes to keep. The rest are discarded.
         final_lattice = []
-        visited_nodes = set()
-        for node in lattice[::-1]:
-            if len(node) <= 3:
-                i, j, s = node
-                if i == I - 1 and j == J - 1:
-                    visited_nodes.add(node)
-            else:
-                i0, j0, s0, i1, j1, s1, edge_parameter_index = node
-                if (i1, j1, s1) in visited_nodes:
-                    visited_nodes.add(node)
-                    visited_nodes.add((i0, j0, s0))
-            if node in visited_nodes:
-                final_lattice.insert(0, node)
+        visited_nodes = set((I-1, J-1, s) for s in xrange(n_states))
 
-        return final_lattice
+        for node in lattice[::-1]:
+            if node in visited_nodes:
+                final_lattice.append(node)
+            elif len(node) > 3 :
+                source_node, dest_node = node[0:3], node[3:6]
+                #if dest_node in visited_nodes:
+                visited_nodes.add(source_node)
+                final_lattice.append(node)
+
+        return list(reversed(final_lattice))
 
 
 def _n_states(state_machine):
