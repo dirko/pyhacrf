@@ -6,7 +6,7 @@
 import numpy as np
 import lbfgs
 from collections import defaultdict
-from algorithms import forward, backward
+from .algorithms import forward, backward
 
 
 class Hacrf(object):
