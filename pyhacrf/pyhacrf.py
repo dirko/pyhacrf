@@ -426,9 +426,9 @@ class _Model(object):
                 final_lattice.append(node)
             elif len(node) > 3 :
                 source_node, dest_node = node[0:3], node[3:6]
-                #if dest_node in visited_nodes:
-                visited_nodes.add(source_node)
-                final_lattice.append(node)
+                if dest_node in visited_nodes:
+                    visited_nodes.add(source_node)
+                    final_lattice.append(node)
 
         return list(reversed(final_lattice))
 
