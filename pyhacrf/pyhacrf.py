@@ -7,6 +7,7 @@ import numpy as np
 import lbfgs
 from collections import defaultdict, deque
 from .algorithms import forward, backward
+from .algorithms import forward_predict
 
 
 class Hacrf(object):
@@ -356,11 +357,22 @@ class _Model(object):
     def predict(self, parameters):
         """ Run forward algorithm to find the predicted distribution over classes. """
         x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
-        _, class_Z, Z = self._forward_probabilities(x_dot_parameters)
+        alpha = self._forward(x_dot_parameters)
+        I, J, _ = self.x.shape
+
+        class_Z = {}
+        Z = -np.inf
+
+        for state, predicted_class in self.states_to_classes.items():
+            weight = alpha[I - 1, J - 1, state]
+            class_Z[self.states_to_classes[state]] = weight
+            Z = np.logaddexp(Z, weight)
+
         return {label: np.exp(class_z - Z) for label, class_z in class_Z.iteritems()}
 
     def _forward_probabilities(self, x_dot_parameters):
-        """ Helper to calculate the predicted probability distribution over classes given some parameters. """
+        """ Helper to calculate the forward probabilities and the predicted probability
+        distribution over classes given some parameters. """
         alpha = self._forward(x_dot_parameters)
         I, J, _ = self.x.shape
 
