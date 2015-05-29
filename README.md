@@ -57,11 +57,18 @@ print(model.predict_proba(training_X_extracted))
 This package depends on `numpy`. The LBFGS optimizer in `pylbfgs` is used, but alternative optimizers can be passed.
 
 ## Install
-Install by running:
-```
-python setup.py install
-```
-or from pypi:
 ```
 pip install pyhacrf
 ```
+
+
+# Developing
+Clone from repo
+```
+pip install -r requirements-dev.txt
+cython pyhacrf/*.pyx
+python setup.py install
+```
+or from pypi:
+
+To deploy to pypi, make sure you have compiled the *.pyx files to *.c
