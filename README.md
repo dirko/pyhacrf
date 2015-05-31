@@ -61,14 +61,12 @@ This package depends on `numpy`. The LBFGS optimizer in `pylbfgs` is used, but a
 pip install pyhacrf
 ```
 
-
 # Developing
-Clone from repo
+Clone from repository, then
 ```
 pip install -r requirements-dev.txt
 cython pyhacrf/*.pyx
 python setup.py install
 ```
-or from pypi:
 
 To deploy to pypi, make sure you have compiled the *.pyx files to *.c

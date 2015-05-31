@@ -156,7 +156,7 @@ class TestModel(unittest.TestCase):
                        (0, 2, lambda i, j, k: (0, 2))]
         state_machine = (start_states, transitions)
         states_to_classes = {0: 'a', 1: 'a', 2: 'b'}  # Dummy
-        parameters = np.array(range(-7, 7)).reshape((7, 2))
+        parameters = np.array(range(-7, 7), dtype='float64').reshape((7, 2))
         # parameters =
         # 0([[-7, -6],
         # 1  [-5, -4],
@@ -202,7 +202,7 @@ class TestModel(unittest.TestCase):
 
     def test_forward_connected(self):
         classes = ['a', 'b']
-        parameters = np.array(range(-8, 8)).reshape((8, 2))
+        parameters = np.array(range(-8, 8), dtype='float64').reshape((8, 2))
         # parameters =
         #0([[-8, -7],
         #1  [-6, -5],
@@ -294,7 +294,7 @@ class TestModel(unittest.TestCase):
 
     def test_forward_backward_same_partition_value(self):
         classes = ['a', 'b']
-        parameters = np.array(range(-8, 8)).reshape((8, 2))
+        parameters = np.array(range(-8, 8), dtype='float64').reshape((8, 2))
         x = np.array([[[0, 1],
                        [2, 1]],
                       [[0, 1],
@@ -313,7 +313,7 @@ class TestModel(unittest.TestCase):
 
     def test_derivate_chain(self):
         classes = ['a', 'b']
-        parameters = np.array(range(-8, 8)).reshape((8, 2))
+        parameters = np.array(range(-8, 8), dtype='float64').reshape((8, 2))
         # parameters =
         #0([[-8, -7],
         #1  [-6, -5],
@@ -368,7 +368,7 @@ class TestModel(unittest.TestCase):
 
     def test_derivate_medium(self):
         classes = ['a', 'b']
-        parameters = np.array(range(-8, 8)).reshape((8, 2))
+        parameters = np.array(range(-8, 8), dtype='float64').reshape((8, 2))
         x = np.array([[[0, 1],
                        [2, 1]],
                       [[0, 1],

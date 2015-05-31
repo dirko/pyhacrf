@@ -436,7 +436,7 @@ class _Model(object):
         for node in lattice[::-1]:
             if node in visited_nodes:
                 final_lattice.append(node)
-            elif len(node) > 3 :
+            elif len(node) > 3:
                 source_node, dest_node = node[0:3], node[3:6]
                 if dest_node in visited_nodes:
                     visited_nodes.add(source_node)

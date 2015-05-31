@@ -30,10 +30,10 @@ cpdef dict forward(list lattice, np.ndarray[double, ndim=3] x_dot_parameters):
     return alpha
 
 
-cpdef np.ndarray(double, ndim=3) forward_predict(list lattice, np.ndarray[double, ndim=3] x_dot_parameters):
+cpdef np.ndarray[double, ndim=3] forward_predict(list lattice, np.ndarray[double, ndim=3] x_dot_parameters):
     """ Helper to calculate the forward weights. Excludes the   """
     # cdef dict alpha = {}
-    cdef np.ndarray(double, ndim=3) alpha = numpy.empty_like(x_dot_parameters)
+    cdef np.ndarray[double, ndim=3] alpha = np.empty_like(x_dot_parameters)
     alpha.fill(-np.inf)
 
     cdef int i, j, s, i0, j0, s0, i1, j1, s1, edge_parameter_index
