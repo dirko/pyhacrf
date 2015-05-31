@@ -2,6 +2,7 @@ from setuptools import setup, Extension
 from codecs import open
 from os import path
 
+
 # from Michael Hoffman's http://www.ebi.ac.uk/~hoffman/software/sunflower/
 class NumpyExtension(Extension):
 
