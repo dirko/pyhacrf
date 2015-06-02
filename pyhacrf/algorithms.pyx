@@ -9,7 +9,7 @@ cpdef dict forward(list lattice, np.ndarray[double, ndim=3] x_dot_parameters):
     cdef dict alpha = {}
 
     cdef int i, j, s, i0, j0, s0, i1, j1, s1, edge_parameter_index
-    cdef float edge_potential
+    cdef double edge_potential
     cdef tuple node
 
     for node in lattice:
@@ -25,7 +25,7 @@ cpdef dict forward(list lattice, np.ndarray[double, ndim=3] x_dot_parameters):
             edge_potential = (x_dot_parameters[i1, j1, edge_parameter_index]
                               + alpha[(i0, j0, s0)])
             alpha[node] = edge_potential
-            alpha[(i1, j1, s1)] = np.logaddexp(alpha.get((i1, j1, s1), -np.inf),
+            alpha[(i1, j1, s1)] = logaddexp(alpha.get((i1, j1, s1), -np.inf),
                                             edge_potential)
     return alpha
 
@@ -35,7 +35,7 @@ cpdef dict forward_predict(list lattice, np.ndarray[double, ndim=3] x_dot_parame
     cdef dict alpha = {}
 
     cdef int i, j, s, i0, j0, s0, i1, j1, s1, edge_parameter_index
-    cdef float edge_potential
+    cdef double edge_potential
     cdef tuple node
 
     for node in lattice:
@@ -50,8 +50,7 @@ cpdef dict forward_predict(list lattice, np.ndarray[double, ndim=3] x_dot_parame
             # Use the features at the destination of the edge.
             edge_potential = (x_dot_parameters[i1, j1, edge_parameter_index]
                               + alpha[(i0, j0, s0)])
-            alpha[(i1, j1, s1)] = np.logaddexp(alpha.get((i1, j1, s1), -np.inf),
-                                               edge_potential)
+            alpha[(i1, j1, s1)] = logaddexp(alpha.get((i1, j1, s1), -np.inf), edge_potential)
     return alpha
 
 
