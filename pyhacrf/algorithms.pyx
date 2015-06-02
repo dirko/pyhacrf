@@ -54,9 +54,14 @@ cpdef dict forward_predict(list lattice, np.ndarray[double, ndim=3] x_dot_parame
     return alpha
 
 
-def backward(lattice, x_dot_parameters, I, J):
+cpdef dict backward(list lattice, np.ndarray[double, ndim=3] x_dot_parameters, int I, int J):
     """ Helper to calculate the backward weights.  """
-    beta = defaultdict(lambda: -np.inf)
+    cdef dict beta = {}
+
+    cdef int i, j, s, i0, j0, s0, i1, j1, s1, edge_parameter_index
+    cdef double edge_potential
+    cdef tuple node
+
     for node in reversed(lattice):
         if len(node) == 3:
             i, j, s = node
@@ -67,6 +72,6 @@ def backward(lattice, x_dot_parameters, I, J):
             # Use the features at the destination of the edge.
             edge_potential = beta[(i1, j1, s1)] + (x_dot_parameters[i1, j1, s1])
             beta[node] = edge_potential
-            beta[(i0, j0, s0)] = np.logaddexp(beta[(i0, j0, s0)],
+            beta[(i0, j0, s0)] = logaddexp(beta.get((i0, j0, s0), -np.inf),
                                               edge_potential + x_dot_parameters[i1, j1, edge_parameter_index])
     return beta

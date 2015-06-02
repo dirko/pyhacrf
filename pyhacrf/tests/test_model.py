@@ -253,7 +253,7 @@ class TestModel(unittest.TestCase):
             self.assertAlmostEqual(actual_alpha[key], expected_alpha[key])
 
     def test_backward_connected(self):
-        parameters = np.array(range(-3, 3)).reshape((3, 2))
+        parameters = np.array(range(-3, 3), dtype='float64').reshape((3, 2))
         # parameters =
         #0 ([[-3, -2],
         #1   [-1,  0],

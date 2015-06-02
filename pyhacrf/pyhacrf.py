@@ -395,7 +395,6 @@ class _Model(object):
         return backward(self._lattice, x_dot_parameters, I, J)
 
     @staticmethod
-    #@profile
     def _build_lattice(x, state_machine):
         """ Helper to construct the list of nodes and edges. """
         I, J, _ = x.shape
