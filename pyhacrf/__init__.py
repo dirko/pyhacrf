@@ -1,6 +1,6 @@
 """ Implements a Hidden Alignment Conditional Random Field (HACRF). """
 
 from pyhacrf import Hacrf
-from pyhacrf import StringPairFeatureExtractor
+from feature_extraction import StringPairFeatureExtractor, PairFeatureExtractor
 
-__all__ = ['Hacrf', 'StringPairFeatureExtractor']
+__all__ = ['Hacrf', 'StringPairFeatureExtractor', 'PairFeatureExtractor']
