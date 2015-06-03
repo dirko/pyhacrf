@@ -30,9 +30,10 @@ cpdef dict forward(list lattice, np.ndarray[double, ndim=3] x_dot_parameters):
     return alpha
 
 
-cpdef dict forward_predict(list lattice, np.ndarray[double, ndim=3] x_dot_parameters):
+cpdef np.ndarray forward_predict(list lattice, np.ndarray[double, ndim=3] x_dot_parameters):
     """ Helper to calculate the forward weights.  """
-    cdef dict alpha = {}
+    cdef np.ndarray[double, ndim=3] alpha = np.empty_like(x_dot_parameters)
+    alpha.fill(-np.inf)
 
     cdef int i, j, s, i0, j0, s0, i1, j1, s1, edge_parameter_index
     cdef double edge_potential
@@ -50,7 +51,7 @@ cpdef dict forward_predict(list lattice, np.ndarray[double, ndim=3] x_dot_parame
             # Use the features at the destination of the edge.
             edge_potential = (x_dot_parameters[i1, j1, edge_parameter_index]
                               + alpha[(i0, j0, s0)])
-            alpha[(i1, j1, s1)] = logaddexp(alpha.get((i1, j1, s1), -np.inf), edge_potential)
+            alpha[(i1, j1, s1)] = logaddexp(alpha[(i1, j1, s1)], edge_potential)
     return alpha
 
 
