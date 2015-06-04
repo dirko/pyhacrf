@@ -90,15 +90,12 @@ cpdef np.ndarray[double, ndim=3] forward_predict(np.ndarray[long, ndim=2] lattic
     return alpha
 
 
-
-
-
 cpdef dict backward(np.ndarray[long, ndim=2] lattice, 
                     np.ndarray[double, ndim=3] x_dot_parameters, 
                     long I, 
                     long J):
     """ Helper to calculate the backward weights.  """
-    beta = {}
+    cdef dict beta = {}
 
     cdef int r
     cdef int S, s
@@ -116,7 +113,7 @@ cpdef dict backward(np.ndarray[long, ndim=2] lattice,
         i1, j1, s1 = lattice[r, 3], lattice[r, 4], lattice[r, 5]
         edge_parameter_index = lattice[r, 6]
 
-        edge_potential = beta.get((i1, j1, s1), -np.inf) + (x_dot_parameters[i1, j1, s1])
+        edge_potential = beta[i1, j1, s1] + (x_dot_parameters[i1, j1, s1])
         beta[(i0, j0, s0, i1, j1, s1, edge_parameter_index)] = edge_potential
         beta[(i0, j0, s0)] = logaddexp(beta.get((i0, j0, s0), -np.inf),
                                        (edge_potential 
