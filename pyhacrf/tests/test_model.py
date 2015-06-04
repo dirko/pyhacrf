@@ -2,7 +2,7 @@
 
 import unittest
 
-from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 import numpy as np
 from numpy import random
 from pyhacrf import Hacrf
@@ -10,6 +10,7 @@ from pyhacrf.pyhacrf import StateMachine, DefaultStateMachine
 from pyhacrf.pyhacrf import _Model
 from pyhacrf import StringPairFeatureExtractor
 
+TEST_PRECISION = 3
 
 class TestHacrf(unittest.TestCase):
     def test_initialize_parameters(self):
@@ -20,6 +21,7 @@ class TestHacrf(unittest.TestCase):
                            (0, 0, (1, 0))]
             state_machine = (start_states, transitions)
             n_states = 2
+            
 
         state_machine = TestStateMachine()
 
@@ -68,7 +70,8 @@ class TestHacrf(unittest.TestCase):
                                         [-85.34524911, 21.87370646, 0.],
                                         [106.41949333, 6.18587125, 0.]])
         print model.parameters
-        assert_array_almost_equal(model.parameters, expected_parameters)
+        assert_array_almost_equal(model.parameters, expected_parameters,
+                                  decimal=TEST_PRECISION)
 
         expected_probas = np.array([[1.00000000e+000, 3.51235685e-039],
                                     [1.00000000e+000, 4.79716208e-039],
@@ -82,11 +85,13 @@ class TestHacrf(unittest.TestCase):
                                     [1.03521293e-033, 1.00000000e+000]])
         actual_predict_probas = model.predict_proba(xf)
         print actual_predict_probas
-        assert_array_almost_equal(actual_predict_probas, expected_probas)
+        assert_array_almost_equal(actual_predict_probas, expected_probas,
+                                  decimal=TEST_PRECISION)
 
         expected_predictions = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
         actual_predictions = model.predict(xf)
-        assert_array_almost_equal(actual_predictions, expected_predictions)
+        assert_array_almost_equal(actual_predictions, expected_predictions,
+                                  decimal=TEST_PRECISION)
 
     def test_fit_predict_regularized(self):
         incorrect = ['helloooo', 'freshh', 'ffb', 'h0me', 'wonderin', 'relaionship', 'hubby', 'krazii', 'mite', 'tropic']
@@ -108,7 +113,8 @@ class TestHacrf(unittest.TestCase):
                                         [-0.0139057, -0.00862948, 0.],
                                         [-0.00623241, 0.02937325, 0.],
                                         [0.00810951, -0.01774676, 0.]])
-        assert_array_almost_equal(model.parameters, expected_parameters)
+        assert_array_almost_equal(model.parameters, expected_parameters, 
+                                  decimal=TEST_PRECISION)
 
         expected_probas = np.array([[0.5227226, 0.4772774],
                                     [0.52568993, 0.47431007],
@@ -122,11 +128,13 @@ class TestHacrf(unittest.TestCase):
                                     [0.50797852, 0.49202148]])
         actual_predict_probas = model.predict_proba(xf)
         print actual_predict_probas
-        assert_array_almost_equal(actual_predict_probas, expected_probas)
+        assert_array_almost_equal(actual_predict_probas, expected_probas, 
+                                  decimal=TEST_PRECISION)
 
         expected_predictions = np.array([0, 0, 1, 0, 1, 1, 1, 1, 1, 0])
         actual_predictions = model.predict(xf)
-        assert_array_almost_equal(actual_predictions, expected_predictions)
+        assert_array_almost_equal(actual_predictions, expected_predictions, 
+                                  decimal=TEST_PRECISION)
 
 
 class TestModel(unittest.TestCase):
@@ -153,16 +161,11 @@ class TestModel(unittest.TestCase):
         # 1(0, 1), 3(0, 2), 1(1, 1), 1(0, 0) should be pruned because they represent partial alignments.
         # Only nodes that are reachable by stepping back from (1, 2) must be included in the lattice.
         actual_lattice = state_machine._build_lattice(x)
-        expected_lattice = [(0, 0, 0),
-                            (0, 0, 0, 1, 0, 0, 2 + n_states),
-                            (0, 0, 0, 1, 1, 0, 0 + n_states),
-                            (1, 0, 0),
-                            (1, 0, 0, 1, 2, 3, 3 + n_states),
-                            (1, 1, 0),
-                            (1, 1, 0, 1, 2, 1, 1 + n_states),
-                            (1, 2, 1),
-                            (1, 2, 3)]
-        self.assertEqual(actual_lattice, expected_lattice)
+        expected_lattice = np.array([(0, 0, 0, 1, 0, 0, 2 + n_states),
+                                     (0, 0, 0, 1, 1, 0, 0 + n_states),
+                                     (1, 0, 0, 1, 2, 3, 3 + n_states),
+                                     (1, 1, 0, 1, 2, 1, 1 + n_states)])
+        assert_array_equal(actual_lattice, expected_lattice)
 
     def test_forward_single(self):
         class TestStateMachine(StateMachine) :
@@ -213,6 +216,10 @@ class TestModel(unittest.TestCase):
         test_model = _Model(state_machine, x, y)
         x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
         actual_alpha = test_model._forward(x_dot_parameters)
+
+        actual_alpha = {k : v for k, v in actual_alpha.items() 
+                        if not np.isneginf(v)}
+        print(actual_alpha)
 
         self.assertEqual(len(actual_alpha), len(expected_alpha))
         print
@@ -309,6 +316,7 @@ class TestModel(unittest.TestCase):
             print s
         x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
         actual_beta = test_model._backward(x_dot_parameters)
+        print actual_beta
 
         print
         self.assertEqual(len(actual_beta), len(expected_beta))
@@ -387,7 +395,7 @@ class TestModel(unittest.TestCase):
         print expected_dll
         print actual_dll
         self.assertAlmostEqual(actual_ll, expected_ll)
-        assert_array_almost_equal(actual_dll, expected_dll, decimal=5)
+        assert_array_almost_equal(actual_dll, expected_dll, decimal=TEST_PRECISION)
 
     def test_derivate_medium(self):
         classes = ['a', 'b']
@@ -419,7 +427,7 @@ class TestModel(unittest.TestCase):
 
         print expected_dll
         print actual_dll
-        assert_array_almost_equal(actual_dll, expected_dll, decimal=5)
+        assert_array_almost_equal(actual_dll, expected_dll, decimal=TEST_PRECISION)
 
     def test_derivate_large(self):
         classes = ['a', 'b', 'c']
@@ -451,7 +459,7 @@ class TestModel(unittest.TestCase):
         print expected_dll
         print actual_dll
         self.assertEqual((np.isnan(actual_dll)).any(), False)
-        assert_array_almost_equal(actual_dll, expected_dll, decimal=4)
+        assert_array_almost_equal(actual_dll, expected_dll, decimal=TEST_PRECISION)
 
 if __name__ == '__main__':
     unittest.main()

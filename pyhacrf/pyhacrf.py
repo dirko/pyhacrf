@@ -5,9 +5,9 @@
 
 import numpy as np
 import lbfgs
-from collections import defaultdict, deque
 from .algorithms import forward, backward
 from .algorithms import forward_predict
+from .state_machine import StateMachine, DefaultStateMachine
 
 
 class Hacrf(object):
@@ -223,20 +223,35 @@ class _Model(object):
         beta = self._backward(x_dot_parameters)
 
         derivative = np.zeros(parameters.shape)
-        for node in self._lattice:
-            alphabeta = alpha[node] + beta[node]
-            if len(node) == 3:
-                i, j, s = node
-                E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i, j, :]) if self.states_to_classes[s] == self.y else 0.0
-                E_Z = np.exp(alphabeta - Z) * self.x[i, j, :]
-                derivative[s, :] += E_f - E_Z
+        old_node = None
+        for edge in self._lattice:
+            source_node = tuple(edge[:3])
+            if source_node != old_node :
+                alphabeta = alpha[source_node] + beta[source_node]
 
-            else:
-                i0, j0, s0, i1, j1, s1, edge_parameter_index = node
-                E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i1, j1, :]) if self.states_to_classes[s1] == self.y else 0.0
-                E_Z = np.exp(alphabeta - Z) * self.x[i1, j1, :]
-                derivative[edge_parameter_index, :] += E_f - E_Z
+                i0, j0, s0 = source_node
+                E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i0, j0, :]) if self.states_to_classes[s0] == self.y else 0.0
+                E_Z = np.exp(alphabeta - Z) * self.x[i0, j0, :]
+                derivative[s0, :] += E_f - E_Z
+                
+                old_node = source_node
 
+            alphabeta = alpha[tuple(edge)] + beta[tuple(edge)]
+            i1, j1, s1, edge_parameter_index = edge[3:]
+            E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i1, j1, :]) if self.states_to_classes[s1] == self.y else 0.0
+            E_Z = np.exp(alphabeta - Z) * self.x[i1, j1, :]
+            derivative[edge_parameter_index, :] += E_f - E_Z
+
+        i0, j0, _ = self.x.shape
+        i0 -= 1
+        j0 -= 1
+        for s0 in range(self.state_machine.n_states) :
+            alphabeta = alpha[(i0, j0, s0)] + beta[(i0, j0, s0)]
+
+            E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i0, j0, :]) if self.states_to_classes[s0] == self.y else 0.0
+            E_Z = np.exp(alphabeta - Z) * self.x[i0, j0, :]
+            derivative[s0, :] += E_f - E_Z
+                
         return (class_Z[self.y]) - (Z), derivative
 
     def predict(self, parameters):
@@ -281,154 +296,3 @@ class _Model(object):
 
 
 
-class StateMachine(object) : 
-    fully_connected = False
-
-    def independent_lattice(self, shape, lattice=None):
-        """ Helper to construct the list of nodes and edges. """
-        I, J = shape
-        print(shape)
-
-        transitions_d = defaultdict(list)
-        for transition_index, (s0, s1, delta) in enumerate(self.transitions) :
-            if not callable(delta) :
-                transitions_d[s0].append((s1, delta, 
-                                          transition_index + self.n_states))
-
-
-        if lattice is None :
-            lattice = []
-            unvisited_nodes = deque([(0, 0, s) for s in self.start_states])
-        else :
-            end_I = min(I, max(lattice[..., 3])) - 1
-            end_J = min(J, max(lattice[..., 4])) - 1
-            
-            unvisited_nodes = deque([(i, j, s)
-                                     for i in range(end_I)
-                                     for j in range(end_J)
-                                     for s in self.start_states])
-
-            lattice = lattice.tolist()
-
-        lattice += self.grow_lattice(unvisited_nodes, (I,J), transitions_d)
-
-        lattice = np.array(sorted(lattice), dtype=int)
-
-
-        return lattice
-
-        
-
-
-    def grow_lattice(self, unvisited_nodes, shape, transitions_d) :
-        I, J = shape
-        visited_nodes = set()
-        lattice = []
-
-        while unvisited_nodes:
-            i, j, s0 = unvisited_nodes.popleft()
-            for s1, delta, edge_parameter_index in transitions_d[s0] :
-                if callable(delta) :
-                    di, dj = delta(i, j, x)
-                else :
-                    di, dj = delta
-
-                if i + di < I and j + dj < J:
-                    dest_node = (i + di, j + dj, s1)
-                    edge = (i, j, s0) + dest_node + (edge_parameter_index,)
-                    lattice.append(edge)
-                    if dest_node not in visited_nodes :
-                        unvisited_nodes.append(dest_node)
-                        visited_nodes.add(dest_node)
-
-
-        return lattice
-
-
-    def connected_edges(self, shape, lattice) :
-        I, J = shape
-
-        visited_nodes = {(I-1, J-1, s) for s in xrange(self.n_states)}
-        connected_edges = []
-
-        for edge in lattice[::-1] :
-            source_node, dest_node = tuple(edge[0:3]), tuple(edge[3:6])
-            if dest_node in visited_nodes:
-                visited_nodes.add(source_node)
-                connected_edges.append(True)
-            else :
-                connected_edges.append(False)
-
-        return connected_edges[::-1]
-
-    def subset_independent_lattice(self, shape) :
-        I, J = shape
-            
-        if I < self.base_shape[0] and J < self.base_shape[1] :
-            lattice = self.base_lattice[(self.base_lattice[..., 3] < I)
-                                        & (self.base_lattice[..., 4] < J)]
-        elif I < self.base_shape[0] :
-            lattice = self.base_lattice[self.base_lattice[..., 3] < I]
-            lattice = self.independent_lattice((I,J), lattice)
-        elif J < self.base_shape[1] :
-            lattice = self.base_lattice[self.base_lattice[..., 4] < J]
-            lattice = self.independent_lattice((I,J), lattice)
-        else :
-            lattice = self.independent_lattice((I,J), self.base_lattice)
-
-        return lattice
-
-
-
-    def _build_lattice(self, x):
-        """ Helper to construct the list of nodes and edges. """
-        I, J, _ = x.shape
-
-        transitions_d = defaultdict(list)
-        for transition_index, (s0, s1, delta) in enumerate(self.transitions) :
-            if callable(delta) :
-                transitions_d[s0].append((s1, delta, 
-                                          transition_index + self.n_states))
-
-
-        lattice = self.subset_independent_lattice((I,J))
-
-        if not transitions_d :
-            return lattice
-
-        else :
-            lattice = list(lattice)
-
-        # Add start states
-        unvisited_nodes = deque([(0, 0, s) for s in self.start_states])
-
-        lattice += self.grow_lattice(unvisited_nodes, (I, J), transitions_d)
-
-        if not self.fully_connected :
-            lattice = lattice[self.connected_edges(lattice)]
-                
-        return lattice
-
-
-class DefaultStateMachine(StateMachine) :
-    def __init__(self, classes) :
-        n_classes = len(classes)
-        deltas = ((1,1), # Match
-                  (0,1), # Insertion
-                  (1,0)) # Deletion
-
-        self.start_states = [i for i in range(n_classes)]
-        self.transitions = [(i, i, delta) 
-                            for delta in deltas
-                            for i in range(n_classes)]
-
-        self.states_to_classes = {i : c for i, c in enumerate(classes)}
-
-        self.n_states = len(classes)
-        self.base_shape = (60,60)
-
-        self.base_lattice = self.independent_lattice(self.base_shape)
-        
-        self.fully_connected = all(self.connected_edges(self.base_shape,
-                                                        self.base_lattice))
-        
