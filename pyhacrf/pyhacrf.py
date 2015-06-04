@@ -365,9 +365,8 @@ class StateMachine(object) :
         I, J = shape
             
         if I < self.base_shape[0] and J < self.base_shape[1] :
-            lattice = self.base_lattice[np.all((self.base_lattice[..., 3] < I, 
-                                                self.base_lattice[..., 4] < J), 
-                                               axis=0)]
+            lattice = self.base_lattice[(self.base_lattice[..., 3] < I)
+                                        & (self.base_lattice[..., 4] < J)]
         elif I < self.base_shape[0] :
             lattice = self.base_lattice[self.base_lattice[..., 3] < I]
             lattice = self.independent_lattice((I,J), lattice)
@@ -426,7 +425,7 @@ class DefaultStateMachine(StateMachine) :
         self.states_to_classes = {i : c for i, c in enumerate(classes)}
 
         self.n_states = len(classes)
-        self.base_shape = (100,100)
+        self.base_shape = (60,60)
 
         self.base_lattice = self.independent_lattice(self.base_shape)
         
