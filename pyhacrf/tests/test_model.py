@@ -6,17 +6,23 @@ from numpy.testing import assert_array_almost_equal
 import numpy as np
 from numpy import random
 from pyhacrf import Hacrf
+from pyhacrf.pyhacrf import StateMachine, DefaultStateMachine
 from pyhacrf.pyhacrf import _Model
 from pyhacrf import StringPairFeatureExtractor
 
 
 class TestHacrf(unittest.TestCase):
     def test_initialize_parameters(self):
-        start_states = [0]
-        transitions = [(0, 0, (1, 1)),
-                       (0, 1, (0, 1)),
-                       (0, 0, (1, 0))]
-        state_machine = (start_states, transitions)
+        class TestStateMachine(StateMachine) :
+            start_states = [0]
+            transitions = [(0, 0, (1, 1)),
+                           (0, 1, (0, 1)),
+                           (0, 0, (1, 0))]
+            state_machine = (start_states, transitions)
+            n_states = 2
+
+        state_machine = TestStateMachine()
+
         n_features = 3
 
         actual_parameters = Hacrf._initialize_parameters(state_machine, n_features)
@@ -25,7 +31,8 @@ class TestHacrf(unittest.TestCase):
 
     def test_default_state_machine(self):
         classes = ['a', 'b']
-        expected_state_machine = ([0, 1],
+        expected_start_states, expected_transitions =\
+                                  ([0, 1],
                                   [(0, 0, (1, 1)),
                                    (1, 1, (1, 1)),
                                    (0, 0, (0, 1)),
@@ -33,9 +40,13 @@ class TestHacrf(unittest.TestCase):
                                    (0, 0, (1, 0)),
                                    (1, 1, (1, 0))])
         expected_states_to_classes = {0: 'a', 1: 'b'}
-        actual_state_machine, actual_states_to_classes = Hacrf._default_state_machine(classes)
-        self.assertEqual(actual_state_machine, expected_state_machine)
-        self.assertEqual(actual_states_to_classes, expected_states_to_classes)
+        state_machine = DefaultStateMachine(classes)
+        self.assertEqual(state_machine.start_states, 
+                         expected_start_states)
+        self.assertEqual(state_machine.transitions, 
+                         expected_transitions)
+        self.assertEqual(state_machine.states_to_classes, 
+                         expected_states_to_classes)
 
     def test_fit_predict(self):
         incorrect = ['helloooo', 'freshh', 'ffb', 'h0me', 'wonderin', 'relaionship', 'hubby', 'krazii', 'mite', 'tropic']
@@ -120,13 +131,18 @@ class TestHacrf(unittest.TestCase):
 
 class TestModel(unittest.TestCase):
     def test_build_lattice(self):
-        start_states = [0, 1]
         n_states = 4  # Because 3 is the max
-        transitions = [(0, 0, (1, 1)),
-                       (0, 1, (0, 1)),
-                       (0, 0, (1, 0)),
-                       (0, 3, lambda i, j, k: (0, 2))]
-        state_machine = (start_states, transitions)
+
+        class TestStateMachine(StateMachine) :
+            start_states = [0, 1]
+            transitions = [(0, 0, (1, 1)),
+                           (0, 1, (0, 1)),
+                           (0, 0, (1, 0)),
+                           (0, 3, lambda i, j, k: (0, 2))]
+            state_machine = (start_states, transitions)
+            n_states = 4
+
+        state_machine = TestStateMachine()
         x = np.zeros((2, 3, 9))
         #               #     ________
         # 1.  .  .      # 1  0 - 10 - 31
@@ -136,7 +152,7 @@ class TestModel(unittest.TestCase):
         #
         # 1(0, 1), 3(0, 2), 1(1, 1), 1(0, 0) should be pruned because they represent partial alignments.
         # Only nodes that are reachable by stepping back from (1, 2) must be included in the lattice.
-        actual_lattice = _Model._build_lattice(x, state_machine)
+        actual_lattice = state_machine._build_lattice(x)
         expected_lattice = [(0, 0, 0),
                             (0, 0, 0, 1, 0, 0, 2 + n_states),
                             (0, 0, 0, 1, 1, 0, 0 + n_states),
@@ -149,13 +165,17 @@ class TestModel(unittest.TestCase):
         self.assertEqual(actual_lattice, expected_lattice)
 
     def test_forward_single(self):
-        start_states = [0, 1]
-        transitions = [(0, 0, (1, 1)),
-                       (0, 1, (0, 1)),
-                       (0, 0, (1, 0)),
-                       (0, 2, lambda i, j, k: (0, 2))]
-        state_machine = (start_states, transitions)
-        states_to_classes = {0: 'a', 1: 'a', 2: 'b'}  # Dummy
+        class TestStateMachine(StateMachine) :
+            start_states = [0, 1]
+            transitions = [(0, 0, (1, 1)),
+                           (0, 1, (0, 1)),
+                           (0, 0, (1, 0)),
+                           (0, 2, lambda i, j, k: (0, 2))]
+            states_to_classes = {0: 'a', 1: 'a', 2: 'b'}  # Dummy
+            n_states = 3
+
+        state_machine = TestStateMachine()
+
         parameters = np.array(range(-7, 7), dtype='float64').reshape((7, 2))
         # parameters =
         # 0([[-7, -6],
@@ -190,7 +210,7 @@ class TestModel(unittest.TestCase):
             (1, 2, 2): np.exp(-6) * np.exp(4) * np.exp(-6) * np.exp(5) * np.exp(-3)
         }
         expected_alpha = {k: np.emath.log(v) for k, v in expected_alpha.items()}
-        test_model = _Model(state_machine, states_to_classes, x, y)
+        test_model = _Model(state_machine, x, y)
         x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
         actual_alpha = test_model._forward(x_dot_parameters)
 
@@ -239,9 +259,9 @@ class TestModel(unittest.TestCase):
         }
         expected_alpha = {k: np.emath.log(v) for k, v in expected_alpha.items()}
 
-        state_machine, states_to_classes = Hacrf._default_state_machine(classes)
+        state_machine = DefaultStateMachine(classes)
         print
-        test_model = _Model(state_machine, states_to_classes, x, y)
+        test_model = _Model(state_machine, x, y)
         for s in test_model._lattice:
             print s
         x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
@@ -275,12 +295,16 @@ class TestModel(unittest.TestCase):
         }
         expected_beta = {k: np.emath.log(v) for k, v in expected_beta.items()}
 
-        state_machine = ([0], [(0, 0, (0, 1)), (0, 0, (1, 0))])
-        states_to_classes = {0: 'a'}
+        class TestStateMachine(StateMachine) :
+            start_states = [0]
+            transitions = [(0, 0, (0, 1)), 
+                           (0, 0, (1, 0))]
+            states_to_classes = {0: 'a'}
+            n_states = 1
 
-        print state_machine, states_to_classes
-        print
-        test_model = _Model(state_machine, states_to_classes, x, y)
+        state_machine = TestStateMachine() 
+
+        test_model = _Model(state_machine, x, y)
         for s in test_model._lattice:
             print s
         x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
@@ -300,8 +324,8 @@ class TestModel(unittest.TestCase):
                       [[0, 1],
                        [1, 0]]])
         y = 'a'
-        state_machine, states_to_classes = Hacrf._default_state_machine(classes)
-        test_model = _Model(state_machine, states_to_classes, x, y)
+        state_machine = DefaultStateMachine(classes)
+        test_model = _Model(state_machine, x, y)
         x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
         actual_alpha = test_model._forward(x_dot_parameters)
         actual_beta = test_model._backward(x_dot_parameters)
@@ -326,10 +350,9 @@ class TestModel(unittest.TestCase):
         x = np.array([[[0, 1],
                        [1, 2]]])
         y = 'a'
-        state_machine, states_to_classes = Hacrf._default_state_machine(classes)
-        test_model = _Model(state_machine, states_to_classes, x, y)
+        state_machine = DefaultStateMachine(classes)
+        test_model = _Model(state_machine, x, y)
         print test_model._lattice
-        print states_to_classes
         #
         # 0   01 --- 01
         #     0      1
@@ -374,10 +397,9 @@ class TestModel(unittest.TestCase):
                       [[0, 1],
                        [1, 0]]])
         y = 'a'
-        state_machine, states_to_classes = Hacrf._default_state_machine(classes)
-        test_model = _Model(state_machine, states_to_classes, x, y)
+        state_machine = DefaultStateMachine(classes)
+        test_model = _Model(state_machine, x, y)
         print test_model._lattice
-        print states_to_classes
 
         expected_dll = np.zeros(parameters.shape)
 
@@ -403,13 +425,12 @@ class TestModel(unittest.TestCase):
         classes = ['a', 'b', 'c']
         y = 'b'
         x = random.randn(8, 3, 10) * 5 + 3
-        state_machine, states_to_classes = Hacrf._default_state_machine(classes)
+        state_machine = DefaultStateMachine(classes)
         parameters = Hacrf._initialize_parameters(state_machine, x.shape[2])
         parameters = random.randn(*parameters.shape) * 10 - 2
 
-        test_model = _Model(state_machine, states_to_classes, x, y)
+        test_model = _Model(state_machine, x, y)
         print test_model._lattice
-        print states_to_classes
 
         expected_dll = np.zeros(parameters.shape)
 
