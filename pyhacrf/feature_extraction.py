@@ -98,8 +98,8 @@ class PairFeatureExtractor(object):
         J = len(sequence2)
         K = len(self._binary_features) + sum(num_feats for _, num_feats in self._sparse_features)
         feature_array = np.zeros((I, J, K))
-        for i in xrange(I):
-            for j in xrange(J):
+        for i in range(I):
+            for j in range(J):
                 for k, feature_function in enumerate(self._binary_features):
                     feature_array[i, j, k] = feature_function(i, j, sequence1, sequence2)
                 k = len(self._binary_features)

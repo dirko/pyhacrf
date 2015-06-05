@@ -104,7 +104,7 @@ class StateMachine(object) :
         I = max(lattice[..., 3])
         J = max(lattice[..., 4])
 
-        visited_nodes = {(I, J, s) for s in xrange(self.n_states)}
+        visited_nodes = {(I, J, s) for s in range(self.n_states)}
         connected_edges = []
 
         for edge in lattice[::-1] :
