@@ -236,7 +236,7 @@ class _Model(object):
                 E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i1, j1, :]) if self.states_to_classes[s1] == self.y else 0.0
                 E_Z = np.exp(alphabeta - Z) * self.x[i1, j1, :]
                 derivative[edge_parameter_index, :] += E_f - E_Z
-        
+
         return (class_Z[self.y]) - (Z), derivative
 
     def predict(self, parameters):

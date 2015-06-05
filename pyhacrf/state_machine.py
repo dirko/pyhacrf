@@ -12,9 +12,8 @@ class StateMachine(object) :
     def independent_lattice(self, shape, lattice=None):
         """ Helper to construct the list of nodes and edges. """
         I, J = shape
-        print(shape)
 
-        if lattice :
+        if lattice is not None :
             end_I = min(I, max(lattice[..., 3])) - 1
             end_J = min(J, max(lattice[..., 4])) - 1
             
