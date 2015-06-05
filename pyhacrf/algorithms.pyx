@@ -6,7 +6,6 @@ import numpy as np
 cimport numpy as np
 from numpy.math cimport logaddexp
 
-
 cpdef dict forward(np.ndarray[long, ndim=2] lattice, np.ndarray[double, ndim=3] x_dot_parameters):
     """ Helper to calculate the forward weights.  """
     cdef dict alpha = {}
@@ -41,7 +40,7 @@ cpdef dict forward(np.ndarray[long, ndim=2] lattice, np.ndarray[double, ndim=3] 
 
     I = x_dot_parameters.shape[0] - 1
     J = x_dot_parameters.shape[1] - 1
-    S = np.max(lattice[..., 5]) + 1
+    S = max(lattice[..., 5]) + 1
 
     for s in range(S) :
         alpha[(I, J, s)] = (alpha.get((I, J, s), -np.inf) 
@@ -113,7 +112,7 @@ cpdef dict backward(np.ndarray[long, ndim=2] lattice,
         i1, j1, s1 = lattice[r, 3], lattice[r, 4], lattice[r, 5]
         edge_parameter_index = lattice[r, 6]
 
-        edge_potential = beta[i1, j1, s1] + (x_dot_parameters[i1, j1, s1])
+        edge_potential = beta[(i1, j1, s1)] + (x_dot_parameters[i1, j1, s1])
         beta[(i0, j0, s0, i1, j1, s1, edge_parameter_index)] = edge_potential
         beta[(i0, j0, s0)] = logaddexp(beta.get((i0, j0, s0), -np.inf),
                                        (edge_potential 

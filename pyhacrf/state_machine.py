@@ -40,14 +40,13 @@ class StateMachine(object) :
     def grow_dependent_lattice(self, x, lattice) :
 
         I, J, _ = x.shape
-        visited_nodes = set()
 
-        unvisited_nodes = set()
+        visited_nodes = set()
         for edge in lattice :
-            unvisited_nodes.add(tuple(edge[:3]))
-            unvisited_nodes.add(tuple(edge[3:6]))
+            visited_nodes.add(tuple(edge[:3]))
+            visited_nodes.add(tuple(edge[3:6]))
         
-        unvisited_nodes = deque(unvisited_nodes)
+        unvisited_nodes = deque(visited_nodes)
         
         lattice = []
 
