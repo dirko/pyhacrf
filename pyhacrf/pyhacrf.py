@@ -223,35 +223,20 @@ class _Model(object):
         beta = self._backward(x_dot_parameters)
 
         derivative = np.zeros(parameters.shape)
-        old_node = None
-        for edge in self._lattice:
-            source_node = tuple(edge[:3])
-            if source_node != old_node :
-                alphabeta = alpha[source_node] + beta[source_node]
+        for node in alpha.viewkeys() | beta.viewkeys() :
+            alphabeta = alpha[node] + beta[node]
+            if len(node) == 3:
+                i, j, s = node
+                E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i, j, :]) if self.states_to_classes[s] == self.y else 0.0
+                E_Z = np.exp(alphabeta - Z) * self.x[i, j, :]
+                derivative[s, :] += E_f - E_Z
 
-                i0, j0, s0 = source_node
-                E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i0, j0, :]) if self.states_to_classes[s0] == self.y else 0.0
-                E_Z = np.exp(alphabeta - Z) * self.x[i0, j0, :]
-                derivative[s0, :] += E_f - E_Z
-                
-                old_node = source_node
-
-            alphabeta = alpha[tuple(edge)] + beta[tuple(edge)]
-            i1, j1, s1, edge_parameter_index = edge[3:]
-            E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i1, j1, :]) if self.states_to_classes[s1] == self.y else 0.0
-            E_Z = np.exp(alphabeta - Z) * self.x[i1, j1, :]
-            derivative[edge_parameter_index, :] += E_f - E_Z
-
-        i0, j0, _ = self.x.shape
-        i0 -= 1
-        j0 -= 1
-        for s0 in range(self.state_machine.n_states) :
-            alphabeta = alpha[(i0, j0, s0)] + beta[(i0, j0, s0)]
-
-            E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i0, j0, :]) if self.states_to_classes[s0] == self.y else 0.0
-            E_Z = np.exp(alphabeta - Z) * self.x[i0, j0, :]
-            derivative[s0, :] += E_f - E_Z
-                
+            else:
+                i0, j0, s0, i1, j1, s1, edge_parameter_index = node
+                E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i1, j1, :]) if self.states_to_classes[s1] == self.y else 0.0
+                E_Z = np.exp(alphabeta - Z) * self.x[i1, j1, :]
+                derivative[edge_parameter_index, :] += E_f - E_Z
+        
         return (class_Z[self.y]) - (Z), derivative
 
     def predict(self, parameters):
