@@ -77,9 +77,6 @@ class Hacrf(object):
         # Initialize the parameters given the state machine, features, and target classes.
         self.parameters = self._initialize_parameters(self._state_machine, X[0].shape[2])
 
-        # self.base_lattice, self.fully_connected = independent_lattice((50,50),
-        #                                                               self._state_machine)
-
         # Create a new model object for each training example
         models = [_Model(self._state_machine, x, ty) for x, ty in zip(X, y)]
 
