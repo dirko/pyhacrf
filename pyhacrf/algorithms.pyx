@@ -15,7 +15,7 @@ cpdef dict forward(np.ndarray[long, ndim=2] lattice, np.ndarray[double, ndim=3] 
     cdef int I, J, s
 
     cdef int old_i0, old_j0, old_s0 
-    cdef float edge_potential
+    cdef double edge_potential
 
     old_i0, old_j0, old_s0 = -1, -1, -1
 
@@ -59,7 +59,7 @@ cpdef np.ndarray[double, ndim=3] forward_predict(np.ndarray[long, ndim=2] lattic
     cdef int I, J, s
 
     cdef int old_i0, old_j0, old_s0 
-    cdef float edge_potential
+    cdef double edge_potential
 
     old_i0, old_j0, old_s0 = -1, -1, -1
 
@@ -102,7 +102,7 @@ cpdef dict backward(np.ndarray[long, ndim=2] lattice,
     cdef int s
     cdef int i0, j0, s0, i1, j1, s1, edge_parameter_index
 
-    cdef float edge_potential
+    cdef double edge_potential
 
     for s in range(S) :
         beta[(I-1, J-1, s)] = 0.0
