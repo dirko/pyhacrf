@@ -242,7 +242,8 @@ class _Model(object):
     def predict(self, parameters):
         """ Run forward algorithm to find the predicted distribution over classes. """
         x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
-        alpha = forward_predict(self._lattice, x_dot_parameters)
+        alpha = forward_predict(self._lattice, x_dot_parameters, 
+                                self.state_machine.n_states)
         I, J, _ = self.x.shape
 
         class_Z = {}
@@ -272,12 +273,14 @@ class _Model(object):
 
     def _forward(self, x_dot_parameters):
         """ Helper to calculate the forward weights.  """
-        return forward(self._lattice, x_dot_parameters)
+        return forward(self._lattice, x_dot_parameters, 
+                       self.state_machine.n_states)
 
     def _backward(self, x_dot_parameters):
         """ Helper to calculate the backward weights.  """
         I, J, _ = self.x.shape
-        return backward(self._lattice, x_dot_parameters, I, J)
+        return backward(self._lattice, x_dot_parameters, I, J,
+                        self.state_machine.n_states)
 
 
 
