@@ -119,10 +119,16 @@ class StateMachine(object) :
 
     def subset_independent_lattice(self, shape) :
         I, J = shape
-            
+
         if I < self.base_shape[0] and J < self.base_shape[1] :
-            lattice = self.base_lattice[(self.base_lattice[..., 3] < I)
-                                        & (self.base_lattice[..., 4] < J)]
+            lattice = self.base_lattice\
+                        .compress(self.base_lattice[..., 3] < I,
+                                  axis=0)
+
+            lattice = lattice\
+                        .compress(lattice[..., 4] < J,
+                                  axis=0)
+ 
         elif I < self.base_shape[0] :
             lattice = self.base_lattice[self.base_lattice[..., 3] < I]
             lattice = self.independent_lattice((I,J), lattice)
@@ -177,6 +183,6 @@ class DefaultStateMachine(StateMachine) :
 
         self.n_states = len(classes)
         
-        self.base_shape = (60, 60)
+        self.base_shape = (100, 100)
         
         super(DefaultStateMachine, self).__init__()

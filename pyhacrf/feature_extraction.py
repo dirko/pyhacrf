@@ -4,7 +4,7 @@
 """ Implements feature extraction methods to use with HACRF models. """
 
 import numpy as np
-
+import itertools
 
 class PairFeatureExtractor(object):
     """ Extract features from sequence pairs.
@@ -94,18 +94,31 @@ class PairFeatureExtractor(object):
 
     def _extract_features(self, sequence1, sequence2):
         """ Helper to extract features for one data point. """
-        I = len(sequence1)
-        J = len(sequence2)
-        K = len(self._binary_features) + sum(num_feats for _, num_feats in self._sparse_features)
-        feature_array = np.zeros((I, J, K))
-        for i in xrange(I):
-            for j in xrange(J):
-                for k, feature_function in enumerate(self._binary_features):
-                    feature_array[i, j, k] = feature_function(i, j, sequence1, sequence2)
-                k = len(self._binary_features)
+        n_sequence1 = len(sequence1) 
+        n_sequence2 = len(sequence2) 
+        K = (len(self._binary_features) 
+             + sum(num_feats for _, num_feats in self._sparse_features))
+
+        feature_array = np.zeros((n_sequence1, n_sequence2, K))
+
+        I, J = np.meshgrid(range(n_sequence1), 
+                           range(n_sequence2), 
+                           indexing="ij")
+
+        for k, feature_function in enumerate(self._binary_features) :
+            feature_func = np.vectorize(feature_function, otypes=[np.float])
+            feature_array[I, J, k] = feature_func(I, J, sequence1, sequence2)
+
+        if self._sparse_features :
+            n_binary_features = len(self._binary_features)
+
+            for i, j in zip(I.ravel(), J.ravel()) :
+                k = n_binary_features
                 for feature_function, num_features in self._sparse_features:
+                    
                     feature_array[i, j, k + feature_function(i, j, sequence1, sequence2)] = 1.0
                     k += num_features
+
         return feature_array
 
 
@@ -169,3 +182,5 @@ class StringPairFeatureExtractor(PairFeatureExtractor):
                                            chars_to_index[s2[j].lower()] +
                                            chars_to_index[s1[i].lower()] * len(chars_to_index)),
                                           len(characters_to_index) ** 2))
+
+
