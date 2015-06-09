@@ -101,13 +101,15 @@ class PairFeatureExtractor(object):
 
         feature_array = np.zeros((n_sequence1, n_sequence2, K))
 
-        I, J = np.meshgrid(range(n_sequence1), 
-                           range(n_sequence2), 
+        I, J = np.meshgrid(np.arange(n_sequence1), 
+                           np.arange(n_sequence2), 
+                           sparse=True,
+                           copy=False,
                            indexing="ij")
 
         for k, feature_function in enumerate(self._binary_features) :
             feature_func = np.vectorize(feature_function, otypes=[np.float])
-            feature_array[I, J, k] = feature_func(I, J, sequence1, sequence2)
+            feature_array[..., k] = feature_func(I, J, sequence1, sequence2)
 
         if self._sparse_features :
             n_binary_features = len(self._binary_features)
@@ -165,9 +167,10 @@ class StringPairFeatureExtractor(PairFeatureExtractor):
     CHARACTERS = 'abcdefghijklmnopqrstuvwxyz0123456789,./;\'\-=<>?:"|_+!@#$%^&*() '
 
     def __init__(self, bias=1.0, start=False, end=False, match=False, numeric=False, transition=False):
-        # TODO: For longer strings, tokenize and use Levenshtein distance up until a lattice position.
-        #       Other (possibly) useful features might be whether characters are consonant or vowel,
-        #       punctuation, case.
+        # TODO: For longer strings, tokenize and use Levenshtein
+        # distance up until a lattice position.  Other (possibly)
+        # useful features might be whether characters are consonant or
+        # vowel, punctuation, case.
         binary_features_active = [True, start, end, match, numeric]
         binary_features = [lambda i, j, s1, s2: bias,
                            lambda i, j, s1, s2: 1.0 if i == 0 or j == 0 else 0.0,
