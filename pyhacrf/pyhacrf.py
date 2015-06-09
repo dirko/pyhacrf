@@ -239,14 +239,8 @@ class _Model(object):
     def predict(self, parameters):
         """ Run forward algorithm to find the predicted distribution over classes. """
         x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
-        I, J, _ = self.x.shape
-
-        alpha_array = np.full((I, J, self.state_machine.n_states),
-                              -np.inf)
-
-        alpha = forward_predict(self._lattice, 
-                                x_dot_parameters, 
-                                alpha_array)
+        alpha = forward_predict(self._lattice, x_dot_parameters, 
+                                self.state_machine.n_states)
         I, J, _ = self.x.shape
 
         class_Z = {}

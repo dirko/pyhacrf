@@ -49,12 +49,14 @@ cpdef dict forward(np.ndarray[long, ndim=2] lattice, np.ndarray[double, ndim=3] 
 
     return alpha
 
-cpdef ndarray[double, ndim=3] forward_predict(ndarray[long, ndim=2] lattice, ndarray[double, ndim=3] x_dot_parameters, ndarray[double, ndim=3] alpha):
+cpdef ndarray[double, ndim=3] forward_predict(ndarray[long, ndim=2] lattice, ndarray[double, ndim=3] x_dot_parameters, long S):
     """ Helper to calculate the forward weights.  """
+
+    cdef ndarray[double, ndim=3] alpha = np.full_like(x_dot_parameters, -inf)
 
     cdef unsigned int r 
     cdef unsigned int i0, j0, s0, i1, j1, s1, edge_parameter_index
-    cdef unsigned int I, J, S, s
+    cdef unsigned int I, J, s
 
     cdef unsigned int old_i0, old_j0, old_s0 
     cdef double edge_potential
@@ -77,9 +79,9 @@ cpdef ndarray[double, ndim=3] forward_predict(ndarray[long, ndim=2] lattice, nda
                               + alpha[(i0, j0, s0)])
         alpha[(i1, j1, s1)] = logaddexp(alpha[(i1, j1, s1)], edge_potential)
 
-    I = alpha.shape[0] - 1
-    J = alpha.shape[1] - 1
-    S = alpha.shape[2] - 1
+    I = x_dot_parameters.shape[0] - 1
+    J = x_dot_parameters.shape[1] - 1
+
 
     for s in range(S) :
         if I == J == 0 :
