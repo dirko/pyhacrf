@@ -211,7 +211,7 @@ class _Model(object):
         self.states_to_classes = state_machine.states_to_classes
         self.x = x
         self.y = y
-        self._lattice = self.state_machine._build_lattice(self.x)
+        self._lattice = self.state_machine.build_lattice(self.x)
 
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """

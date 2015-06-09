@@ -42,9 +42,9 @@ class TestHacrf(unittest.TestCase):
                                    (1, 1, (1, 0))])
         expected_states_to_classes = {0: 'a', 1: 'b'}
         state_machine = DefaultStateMachine(classes)
-        self.assertEqual(state_machine.start_states,
+        self.assertEqual(state_machine._start_states,
                          expected_start_states)
-        self.assertEqual(state_machine.transitions,
+        self.assertEqual(state_machine._transitions,
                          expected_transitions)
         self.assertEqual(state_machine.states_to_classes, 
                          expected_states_to_classes)
@@ -157,7 +157,7 @@ class TestModel(unittest.TestCase):
         #
         # 1(0, 1), 3(0, 2), 1(1, 1), 1(0, 0) should be pruned because they represent partial alignments.
         # Only nodes that are reachable by stepping back from (1, 2) must be included in the lattice.
-        actual_lattice = state_machine._build_lattice(x)
+        actual_lattice = state_machine.build_lattice(x)
         expected_lattice = np.array([(0, 0, 0, 1, 0, 0, 2 + n_states),
                                      (0, 0, 0, 1, 1, 0, 0 + n_states),
                                      (1, 0, 0, 1, 2, 3, 3 + n_states),
@@ -183,7 +183,7 @@ class TestModel(unittest.TestCase):
         #
         # 1(0, 2) should be pruned because they represent partial alignments.
         # Only nodes that are reachable by stepping back from (1, 2) must be included in the lattice.
-        actual_lattice = state_machine._build_lattice(x)
+        actual_lattice = state_machine.build_lattice(x)
         expected_lattice = np.array([(0, 0, 0, 1, 0, 0, 2 + n_states),
                                      (1, 0, 0, 1, 2, 1, 1 + n_states)])
         assert_array_equal(actual_lattice, expected_lattice)
