@@ -107,9 +107,12 @@ class PairFeatureExtractor(object):
                            copy=False,
                            indexing="ij")
 
+        array1 = np.array(sequence1, dtype=object)
+        array2 = np.array(sequence2, dtype=object)
+
         for k, feature_function in enumerate(self._binary_features) :
-            feature_func = np.vectorize(feature_function, otypes=[np.float])
-            feature_array[..., k] = feature_func(I, J, sequence1, sequence2)
+            feature_func = np.frompyfunc(feature_function, 4, 1)
+            feature_array[..., k] = feature_func(I, J, array1, array2)
 
         if self._sparse_features :
             n_binary_features = len(self._binary_features)
