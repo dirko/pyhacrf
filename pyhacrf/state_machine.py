@@ -6,8 +6,15 @@ class StateMachine(object) :
         
     def __init__(self) :
         self.base_lattice = self.independent_lattice(self.base_shape)
-        self.f_base_lattice = np.asfortranarray(self.base_lattice)
-        
+
+        x = np.arange(self.base_shape[0])
+        x.shape = (1, -1)
+        self.I1 = np.asfortranarray(self.base_lattice[..., 3:4] < x)
+
+        y = np.arange(self.base_shape[1])
+        y.shape = (1, -1)
+        self.J1 = np.asfortranarray(self.base_lattice[..., 4:5] < y)
+
         self.fully_connected = all(self.connected_edges(self.base_lattice))
 
     def independent_lattice(self, shape, lattice=None):
@@ -123,19 +130,18 @@ class StateMachine(object) :
 
         if I < self.base_shape[0] and J < self.base_shape[1] :
             lattice = self.base_lattice.compress(
-                (self.f_base_lattice[..., 3] < I) &
-                (self.f_base_lattice[..., 4] < J),
+                self.I1[..., I] &
+                self.J1[..., J],
                 axis=0)
 
- 
         elif I < self.base_shape[0] :
             lattice = self.base_lattice.compress(
-                self.f_base_lattice[..., 3] < I,
+                self.I1[..., I],
                 axis = 0)
             lattice = self.independent_lattice((I,J), lattice)
         elif J < self.base_shape[1] :
             lattice = self.base_lattice.compress(
-                self.f_base_lattice[..., 4] < J,
+                self.J1[..., J],
                 axis = 0)
             lattice = self.independent_lattice((I,J), lattice)
         else :
