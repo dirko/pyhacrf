@@ -7,7 +7,7 @@ import numpy as np
 import lbfgs
 from .algorithms import forward, backward
 from .algorithms import forward_predict
-from .state_machine import StateMachine, DefaultStateMachine
+from .state_machine import DefaultStateMachine
 
 
 class Hacrf(object):
@@ -169,7 +169,7 @@ class Hacrf(object):
     def _initialize_parameters(state_machine, n_features):
         """ Helper to create initial parameter vector with the correct shape. """
         return np.zeros((state_machine.n_states 
-                         + len(state_machine.transitions), 
+                         + state_machine.n_transitions,
                          n_features))
 
 

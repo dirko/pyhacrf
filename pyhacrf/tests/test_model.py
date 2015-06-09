@@ -6,24 +6,23 @@ from numpy.testing import assert_array_almost_equal, assert_array_equal
 import numpy as np
 from numpy import random
 from pyhacrf import Hacrf
-from pyhacrf.pyhacrf import StateMachine, DefaultStateMachine
+from pyhacrf.state_machine import GeneralStateMachine, DefaultStateMachine
 from pyhacrf.pyhacrf import _Model
 from pyhacrf import StringPairFeatureExtractor
 
 TEST_PRECISION = 3
 
+
 class TestHacrf(unittest.TestCase):
     def test_initialize_parameters(self):
-        class TestStateMachine(StateMachine) :
-            start_states = [0]
-            transitions = [(0, 0, (1, 1)),
-                           (0, 1, (0, 1)),
-                           (0, 0, (1, 0))]
-            state_machine = (start_states, transitions)
-            n_states = 2
-            
-
-        state_machine = TestStateMachine()
+        start_states = [0]
+        transitions = [(0, 0, (1, 1)),
+                       (0, 1, (0, 1)),
+                       (0, 0, (1, 0))]
+        states_to_classes = {0: 'a'}
+        state_machine = GeneralStateMachine(start_states=start_states,
+                                            transitions=transitions,
+                                            states_to_classes=states_to_classes)
 
         n_features = 3
 
@@ -43,9 +42,9 @@ class TestHacrf(unittest.TestCase):
                                    (1, 1, (1, 0))])
         expected_states_to_classes = {0: 'a', 1: 'b'}
         state_machine = DefaultStateMachine(classes)
-        self.assertEqual(state_machine.start_states, 
+        self.assertEqual(state_machine.start_states,
                          expected_start_states)
-        self.assertEqual(state_machine.transitions, 
+        self.assertEqual(state_machine.transitions,
                          expected_transitions)
         self.assertEqual(state_machine.states_to_classes, 
                          expected_states_to_classes)
@@ -141,16 +140,14 @@ class TestModel(unittest.TestCase):
     def test_build_lattice(self):
         n_states = 4  # Because 3 is the max
 
-        class TestStateMachine(StateMachine) :
-            start_states = [0, 1]
-            transitions = [(0, 0, (1, 1)),
-                           (0, 1, (0, 1)),
-                           (0, 0, (1, 0)),
-                           (0, 3, lambda i, j, k: (0, 2))]
-            state_machine = (start_states, transitions)
-            n_states = 4
+        start_states = [0, 1]
+        transitions = [(0, 0, (1, 1)),
+                       (0, 1, (0, 1)),
+                       (0, 0, (1, 0)),
+                       (0, 3, lambda i, j, k: (0, 2))]
+        states_to_classes = {0: 0, 1: 1, 3: 3}
 
-        state_machine = TestStateMachine()
+        state_machine = GeneralStateMachine(start_states, transitions, states_to_classes)
         x = np.zeros((2, 3, 9))
         #               #     ________
         # 1.  .  .      # 1  0 - 10 - 31
@@ -167,17 +164,39 @@ class TestModel(unittest.TestCase):
                                      (1, 1, 0, 1, 2, 1, 1 + n_states)])
         assert_array_equal(actual_lattice, expected_lattice)
 
-    def test_forward_single(self):
-        class TestStateMachine(StateMachine) :
-            start_states = [0, 1]
-            transitions = [(0, 0, (1, 1)),
-                           (0, 1, (0, 1)),
-                           (0, 0, (1, 0)),
-                           (0, 2, lambda i, j, k: (0, 2))]
-            states_to_classes = {0: 'a', 1: 'a', 2: 'b'}  # Dummy
-            n_states = 3
+    def test_build_lattice_jumps(self):
+        n_states = 2  # Because 1 is the max
 
-        state_machine = TestStateMachine()
+        start_states = [0, 1]
+        transitions = [(0, 0, (1, 1)),
+                       (0, 1, (0, 2)),
+                       (0, 0, (1, 0))]
+        states_to_classes = {0: 0, 1: 1}
+
+        state_machine = GeneralStateMachine(start_states, transitions, states_to_classes)
+        x = np.zeros((2, 3, 9))
+        #               #     ________
+        # 1.  .  .      # 1  0    .    1
+        #               #    |  _______
+        # 0.  .  .      # 0 10 /  .    1
+        #  0  1  2      #    0    1    2
+        #
+        # 1(0, 2) should be pruned because they represent partial alignments.
+        # Only nodes that are reachable by stepping back from (1, 2) must be included in the lattice.
+        actual_lattice = state_machine._build_lattice(x)
+        expected_lattice = np.array([(0, 0, 0, 1, 0, 0, 2 + n_states),
+                                     (1, 0, 0, 1, 2, 1, 1 + n_states)])
+        assert_array_equal(actual_lattice, expected_lattice)
+
+    def test_forward_single(self):
+        start_states = [0, 1]
+        transitions = [(0, 0, (1, 1)),
+                       (0, 1, (0, 1)),
+                       (0, 0, (1, 0)),
+                       (0, 2, lambda i, j, k: (0, 2))]
+        states_to_classes = {0: 'a', 1: 'a', 2: 'b'}  # Dummy
+
+        state_machine = GeneralStateMachine(start_states, transitions, states_to_classes)
 
         parameters = np.array(range(-7, 7), dtype='float64').reshape((7, 2))
         # parameters =
@@ -302,14 +321,13 @@ class TestModel(unittest.TestCase):
         }
         expected_beta = {k: np.emath.log(v) for k, v in expected_beta.items()}
 
-        class TestStateMachine(StateMachine) :
-            start_states = [0]
-            transitions = [(0, 0, (0, 1)), 
-                           (0, 0, (1, 0))]
-            states_to_classes = {0: 'a'}
-            n_states = 1
+        start_states = [0]
+        transitions = [(0, 0, (0, 1)),
+                       (0, 0, (1, 0))]
+        states_to_classes = {0: 'a'}
+        n_states = 1
 
-        state_machine = TestStateMachine() 
+        state_machine = GeneralStateMachine(start_states, transitions, states_to_classes)
 
         test_model = _Model(state_machine, x, y)
         for s in test_model._lattice:
