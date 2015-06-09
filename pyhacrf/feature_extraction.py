@@ -117,7 +117,7 @@ class PairFeatureExtractor(object):
         if self._sparse_features :
             n_binary_features = len(self._binary_features)
 
-            for i, j in zip(I.ravel(), J.ravel()) :
+            for i, j in np.ndindex(len(sequence1), len(sequence2)) :
                 k = n_binary_features
                 for feature_function, num_features in self._sparse_features:
                     
