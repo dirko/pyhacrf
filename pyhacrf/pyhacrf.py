@@ -28,6 +28,9 @@ class Hacrf(object):
     optimizer_kwargs : dictionary, optional (default=None)
         The keyword arguments to pass to the optimizing function. Only used when `optimizer` is also specified.
 
+    state_machine : Instance of `GeneralStateMachine` or `DefaultStateMachine`, optional (default=`DefaultStateMachine`)
+        The state machine to use to generate the lattice.
+
     References
     ----------
     See *A Conditional Random Field for Discriminatively-trained Finite-state String Edit Distance*
@@ -35,16 +38,19 @@ class Hacrf(object):
     by Dirko Coetsee.
     """
 
-    def __init__(self, l2_regularization=0.0, optimizer=None, optimizer_kwargs=None):
+    def __init__(self,
+                 l2_regularization=0.0,
+                 optimizer=None,
+                 optimizer_kwargs=None,
+                 state_machine=None):
         self.parameters = None
         self.classes = None
         self.l2_regularization = l2_regularization
         self._optimizer = optimizer
         self._optimizer_kwargs = optimizer_kwargs
-        # TODO: make it possible to add own state machine / provide alternative state machines.
 
-        self.optimizer_result = None
-        self._state_machine = None
+        self._optimizer_result = None
+        self._state_machine = state_machine
         self._states_to_classes = None
         self._evaluation_count = None
 
@@ -71,8 +77,8 @@ class Hacrf(object):
         if len(X) != n_points:
             raise Exception('Number of training points should be the same as training labels.')
 
-        #
-        self._state_machine = DefaultStateMachine(self.classes)
+        if not self._state_machine:
+            self._state_machine = DefaultStateMachine(self.classes)
 
         # Initialize the parameters given the state machine, features, and target classes.
         self.parameters = self._initialize_parameters(self._state_machine, X[0].shape[2])

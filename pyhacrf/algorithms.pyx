@@ -6,6 +6,7 @@ from numpy import ndarray
 from numpy cimport ndarray
 from numpy.math cimport logaddexp, INFINITY as inf
 
+
 cpdef dict forward(np.ndarray[long, ndim=2] lattice, np.ndarray[double, ndim=3] x_dot_parameters, long S):
     """ Helper to calculate the forward weights.  """
     cdef dict alpha = {}
@@ -19,12 +20,12 @@ cpdef dict forward(np.ndarray[long, ndim=2] lattice, np.ndarray[double, ndim=3] 
 
     old_i0, old_j0, old_s0 = -1, -1, -1
 
-    for r in range(lattice.shape[0]) :
+    for r in range(lattice.shape[0]):
         i0, j0, s0 = lattice[r, 0], lattice[r, 1], lattice[r, 2] 
         i1, j1, s1 = lattice[r, 3], lattice[r, 4], lattice[r, 5]
         edge_parameter_index = lattice[r, 6]
         
-        if i0 != old_i0 or j0 != old_j0 or s0 != old_s0 :
+        if i0 != old_i0 or j0 != old_j0 or s0 != old_s0:
             if i0 == 0 and j0 == 0:
                 alpha[(i0, j0, s0)] = x_dot_parameters[i0, j0, s0]
             else:
@@ -41,16 +42,16 @@ cpdef dict forward(np.ndarray[long, ndim=2] lattice, np.ndarray[double, ndim=3] 
     I = x_dot_parameters.shape[0] - 1
     J = x_dot_parameters.shape[1] - 1
 
-    for s in range(S) :
-        if I == J == 0 :
+    for s in range(S):
+        if I == J == 0:
             alpha[(I, J, s)] = x_dot_parameters[I, J, s]
-        else :
+        else:
             alpha[(I, J, s)] = <double> alpha.get((I, J, s), -inf) + x_dot_parameters[I, J, s]
 
     return alpha
 
 cpdef ndarray[double, ndim=3] forward_predict(ndarray[long, ndim=2] lattice, ndarray[double, ndim=3] x_dot_parameters, long S):
-    """ Helper to calculate the forward weights.  """
+    """ Helper to calculate the forward weights for prediction.  """
 
     cdef ndarray[double, ndim=3] alpha = np.full_like(x_dot_parameters, -inf)
 
@@ -63,11 +64,11 @@ cpdef ndarray[double, ndim=3] forward_predict(ndarray[long, ndim=2] lattice, nda
 
     old_i0, old_j0, old_s0 = -1, -1, -1
 
-    for r in range(lattice.shape[0]) :
+    for r in range(lattice.shape[0]):
         i0, j0, s0 = lattice[r, 0], lattice[r, 1], lattice[r, 2], 
         i1, j1, s1 = lattice[r, 3], lattice[r, 4], lattice[r, 5]
         edge_parameter_index = lattice[r, 6]
-        if i0 != old_i0 or j0 != old_j0 or s0 != old_s0 :
+        if i0 != old_i0 or j0 != old_j0 or s0 != old_s0:
             if i0 == 0 and j0 == 0:
                 alpha[(i0, j0, s0)] = x_dot_parameters[i0, j0, s0]
             else:
@@ -82,11 +83,10 @@ cpdef ndarray[double, ndim=3] forward_predict(ndarray[long, ndim=2] lattice, nda
     I = x_dot_parameters.shape[0] - 1
     J = x_dot_parameters.shape[1] - 1
 
-
-    for s in range(S) :
-        if I == J == 0 :
+    for s in range(S):
+        if I == J == 0:
             alpha[(I, J, s)] = x_dot_parameters[I, J, s]
-        else :
+        else:
             alpha[(I, J, s)] += x_dot_parameters[I, J, s]
         
     return alpha
@@ -94,7 +94,7 @@ cpdef ndarray[double, ndim=3] forward_predict(ndarray[long, ndim=2] lattice, nda
 
 cpdef dict backward(np.ndarray[long, ndim=2] lattice, 
                     np.ndarray[double, ndim=3] x_dot_parameters, 
-                    long I, long J, long S) :
+                    long I, long J, long S):
     """ Helper to calculate the backward weights.  """
     cdef dict beta = {}
 
@@ -104,10 +104,10 @@ cpdef dict backward(np.ndarray[long, ndim=2] lattice,
 
     cdef double edge_potential
 
-    for s in range(S) :
+    for s in range(S):
         beta[(I-1, J-1, s)] = 0.0
 
-    for r in range((lattice.shape[0] - 1), -1, -1) :
+    for r in range((lattice.shape[0] - 1), -1, -1):
         i0, j0, s0 = lattice[r, 0], lattice[r, 1], lattice[r, 2], 
         i1, j1, s1 = lattice[r, 3], lattice[r, 4], lattice[r, 5]
         edge_parameter_index = lattice[r, 6]
@@ -119,5 +119,4 @@ cpdef dict backward(np.ndarray[long, ndim=2] lattice,
                                         + x_dot_parameters[i1, 
                                                            j1, 
                                                            edge_parameter_index]))
-
     return beta

@@ -4,7 +4,7 @@
 """ Implements feature extraction methods to use with HACRF models. """
 
 import numpy as np
-import itertools
+
 
 class PairFeatureExtractor(object):
     """ Extract features from sequence pairs.
@@ -110,14 +110,14 @@ class PairFeatureExtractor(object):
         array1 = np.array(sequence1, dtype=object)
         array2 = np.array(sequence2, dtype=object)
 
-        for k, feature_function in enumerate(self._binary_features) :
+        for k, feature_function in enumerate(self._binary_features):
             feature_func = np.frompyfunc(feature_function, 4, 1)
             feature_array[..., k] = feature_func(I, J, array1, array2)
 
-        if self._sparse_features :
+        if self._sparse_features:
             n_binary_features = len(self._binary_features)
 
-            for i, j in np.ndindex(len(sequence1), len(sequence2)) :
+            for i, j in np.ndindex(len(sequence1), len(sequence2)):
                 k = n_binary_features
                 for feature_function, num_features in self._sparse_features:
                     

@@ -3,6 +3,26 @@ from collections import defaultdict, deque
 
 
 class GeneralStateMachine(object):
+    """ State machine which, together with two input sequences, is used to build the lattice.
+
+    Each state and each transition is labelled by different integers.
+
+    Parameters
+    ----------
+    start_states : list of ints
+        The states that the state machine can start in.
+
+    transitions : List of tuples
+        The start state, end state, and number of positions to move in each sequence. For example,
+        [(0, 0, (0, 1)),  # insertion into the first sequence, while going from state 0 to state 0.
+         (1, 0, (1, 0)),  # deletion from first sequence, while moving from state 1 to state 0.
+         (2, 1, (1, 1)),  # match/substitution - move from state 2 to state 1.
+         ...
+        ]
+
+    states_to_classes : dictionary
+        Dictionary where each state is mapped to a class.
+    """
 
     def __init__(self, start_states, transitions, states_to_classes):
         self._start_states = start_states
@@ -14,7 +34,7 @@ class GeneralStateMachine(object):
         self.states_to_classes = states_to_classes
 
     def build_lattice(self, x):
-        """ Construct the list of nodes and edges. """
+        """ Construct the list of nodes and edges for input features. """
         I, J, _ = x.shape
         start_states, transitions = self._start_states, self._transitions
 
@@ -32,9 +52,9 @@ class GeneralStateMachine(object):
             lattice.append(node)
             i, j, s0 = node
             for s1, delta, transition_index in transitions_d[s0]:
-                try :
+                try:
                     di, dj = delta
-                except TypeError :
+                except TypeError:
                     di, dj = delta(i, j, x)
 
                 if i + di < I and j + dj < J:
@@ -68,6 +88,16 @@ class GeneralStateMachine(object):
 
 
 class DefaultStateMachine(object):
+    """ State machine which, together with two input sequences, is used to build the lattice.
+
+    Simple and fast state machine with a single state for each class.
+    Allows for character match/substitution, deletion, and insertion.
+
+    Parameters
+    ----------
+    classes : list
+        The set of labels.
+    """
     BASE_LENGTH = 60
 
     def __init__(self, classes):
@@ -136,7 +166,7 @@ class DefaultStateMachine(object):
         return lattice
 
     def build_lattice(self, x):
-        """ Construct the list of nodes and edges. """
+        """ Construct the list of nodes and edges for input features. """
         I, J, _ = x.shape
         lattice = self._subset_independent_lattice((I, J))
         return lattice
