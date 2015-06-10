@@ -1,6 +1,7 @@
 import numpy as np
 from collections import defaultdict, deque
 
+
 class GeneralStateMachine(object):
 
     def __init__(self, start_states, transitions, states_to_classes):
@@ -86,30 +87,30 @@ class DefaultStateMachine(object):
 
         x = np.arange(self.BASE_LENGTH)
         x.shape = (1, -1)
-        self.I1 = np.asfortranarray(self._base_lattice[..., 3:4] < x)
-        self.J1 = np.asfortranarray(self._base_lattice[..., 4:5] < x)
+        self._I1 = np.asfortranarray(self._base_lattice[..., 3:4] < x)
+        self._J1 = np.asfortranarray(self._base_lattice[..., 4:5] < x)
 
-    def _subset_independent_lattice(self, base_lattice, base_shape, shape):
+    def _subset_independent_lattice(self, shape):
         I, J = shape
 
-        if I < self.BASE_LENGTH and J < self.BASE_LENGTH :
+        if I < self.BASE_LENGTH and J < self.BASE_LENGTH:
             lattice = self._base_lattice.compress(
-                self.I1[..., I] &
-                self.J1[..., J],
+                self._I1[..., I] &
+                self._J1[..., J],
                 axis=0)
 
-        elif I < self.BASE_LENGTH :
+        elif I < self.BASE_LENGTH:
             lattice = self._base_lattice.compress(
-                self.I1[..., I],
-                axis = 0)
-            lattice = self._independent_lattice((I,J), lattice)
-        elif J < self.BASE_LENGTH :
+                self._I1[..., I],
+                axis=0)
+            lattice = self._independent_lattice((I, J), lattice)
+        elif J < self.BASE_LENGTH:
             lattice = self._base_lattice.compress(
-                self.J1[..., J],
-                axis = 0)
-            lattice = self._independent_lattice((I,J), lattice)
-        else :
-            lattice = self._independent_lattice((I,J), self.base_lattice)
+                self._J1[..., J],
+                axis=0)
+            lattice = self._independent_lattice((I, J), lattice)
+        else:
+            lattice = self._independent_lattice((I, J), self._base_lattice)
 
         return lattice
 
@@ -137,9 +138,7 @@ class DefaultStateMachine(object):
     def build_lattice(self, x):
         """ Construct the list of nodes and edges. """
         I, J, _ = x.shape
-        lattice = self._subset_independent_lattice(self._base_lattice, 
-                                                   self._base_shape, 
-                                                   (I, J))
+        lattice = self._subset_independent_lattice((I, J))
         return lattice
 
 
