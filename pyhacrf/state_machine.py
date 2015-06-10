@@ -1,7 +1,6 @@
 import numpy as np
 from collections import defaultdict, deque
 
-
 class GeneralStateMachine(object):
 
     def __init__(self, start_states, transitions, states_to_classes):
@@ -85,19 +84,32 @@ class DefaultStateMachine(object):
         self.n_states = len(classes)
         self._base_lattice = self._independent_lattice(self._base_shape)
 
+        x = np.arange(self.BASE_LENGTH)
+        x.shape = (1, -1)
+        self.I1 = np.asfortranarray(self._base_lattice[..., 3:4] < x)
+        self.J1 = np.asfortranarray(self._base_lattice[..., 4:5] < x)
+
     def _subset_independent_lattice(self, base_lattice, base_shape, shape):
         I, J = shape
 
-        if I < base_shape[0] and J < base_shape[1]:
-            lattice = base_lattice[(base_lattice[..., 3] < I) & (base_lattice[..., 4] < J)]
-        elif I < base_shape[0]:
-            lattice = base_lattice[base_lattice[..., 3] < I]
-            lattice = self._independent_lattice((I, J), lattice)
-        elif J < base_shape[1]:
-            lattice = base_lattice[base_lattice[..., 4] < J]
-            lattice = self._independent_lattice((I, J), lattice)
-        else:
-            lattice = self._independent_lattice((I, J), base_lattice)
+        if I < self.BASE_LENGTH and J < self.BASE_LENGTH :
+            lattice = self._base_lattice.compress(
+                self.I1[..., I] &
+                self.J1[..., J],
+                axis=0)
+
+        elif I < self.BASE_LENGTH :
+            lattice = self._base_lattice.compress(
+                self.I1[..., I],
+                axis = 0)
+            lattice = self._independent_lattice((I,J), lattice)
+        elif J < self.BASE_LENGTH :
+            lattice = self._base_lattice.compress(
+                self.J1[..., J],
+                axis = 0)
+            lattice = self._independent_lattice((I,J), lattice)
+        else :
+            lattice = self._independent_lattice((I,J), self.base_lattice)
 
         return lattice
 
@@ -116,14 +128,18 @@ class DefaultStateMachine(object):
         else:
             lattice = []
             unvisited_nodes = deque([(0, 0, s) for s in self._start_states])
-        lattice += _grow_independent_lattice(self._transitions, self.n_states, (I, J), unvisited_nodes)
+        lattice += _grow_independent_lattice(self._transitions, 
+                                             self.n_states, (I, J), 
+                                             unvisited_nodes)
         lattice = np.array(sorted(lattice), dtype=int)
         return lattice
 
     def build_lattice(self, x):
         """ Construct the list of nodes and edges. """
         I, J, _ = x.shape
-        lattice = self._subset_independent_lattice(self._base_lattice, self._base_shape, (I, J))
+        lattice = self._subset_independent_lattice(self._base_lattice, 
+                                                   self._base_shape, 
+                                                   (I, J))
         return lattice
 
 
