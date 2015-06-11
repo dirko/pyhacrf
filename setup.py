@@ -24,7 +24,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='pyhacrf',
-    version='0.0.6',
+    version='0.0.7',
     packages=['pyhacrf'],
     install_requires=['numpy>=1.9', 'PyLBFGS>=0.1.3'],
     ext_modules=[NumpyExtension('pyhacrf.algorithms', 
