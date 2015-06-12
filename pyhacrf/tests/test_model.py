@@ -68,7 +68,7 @@ class TestHacrf(unittest.TestCase):
                                         [-28.69877796, 24.47127009, 0.],
                                         [-85.34524911, 21.87370646, 0.],
                                         [106.41949333, 6.18587125, 0.]])
-        print model.parameters
+        print(model.parameters)
         assert_array_almost_equal(model.parameters, expected_parameters,
                                   decimal=TEST_PRECISION)
 
@@ -83,7 +83,7 @@ class TestHacrf(unittest.TestCase):
                                     [2.46673086e-010, 1.00000000e+000],
                                     [1.03521293e-033, 1.00000000e+000]])
         actual_predict_probas = model.predict_proba(xf)
-        print actual_predict_probas
+        print(actual_predict_probas)
         assert_array_almost_equal(actual_predict_probas, expected_probas,
                                   decimal=TEST_PRECISION)
 
@@ -102,7 +102,7 @@ class TestHacrf(unittest.TestCase):
 
         model = Hacrf(l2_regularization=10.0)
         model.fit(xf, [0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
-        print model.parameters
+        print(model.parameters)
 
         expected_parameters = np.array([[-0.0569188, 0.07413339, 0.],
                                         [0.00187709, -0.06377866, 0.],
@@ -126,7 +126,7 @@ class TestHacrf(unittest.TestCase):
                                     [0.47419724, 0.52580276],
                                     [0.50797852, 0.49202148]])
         actual_predict_probas = model.predict_proba(xf)
-        print actual_predict_probas
+        print(actual_predict_probas)
         assert_array_almost_equal(actual_predict_probas, expected_probas, 
                                   decimal=TEST_PRECISION)
 
@@ -243,7 +243,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(len(actual_alpha), len(expected_alpha))
         print
         for key in sorted(expected_alpha.keys()):
-            print key, (expected_alpha[key]), (actual_alpha[key])
+            print(key, (expected_alpha[key]), (actual_alpha[key]))
             self.assertEqual(actual_alpha[key], expected_alpha[key])
 
     def test_forward_connected(self):
@@ -289,13 +289,13 @@ class TestModel(unittest.TestCase):
         print
         test_model = _Model(state_machine, x, y)
         for s in test_model._lattice:
-            print s
+            print(s)
         x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
         actual_alpha = test_model._forward(x_dot_parameters)
 
         self.assertEqual(len(actual_alpha), len(expected_alpha))
         for key in sorted(expected_alpha.keys()):
-            print key, expected_alpha[key], actual_alpha[key]
+            print(key, expected_alpha[key], actual_alpha[key])
             self.assertAlmostEqual(actual_alpha[key], expected_alpha[key])
 
     def test_backward_connected(self):
@@ -331,15 +331,15 @@ class TestModel(unittest.TestCase):
 
         test_model = _Model(state_machine, x, y)
         for s in test_model._lattice:
-            print s
+            print(s)
         x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
         actual_beta = test_model._backward(x_dot_parameters)
-        print actual_beta
+        print(actual_beta)
 
         print
         self.assertEqual(len(actual_beta), len(expected_beta))
         for key in sorted(expected_beta.keys(), reverse=True):
-            print key, expected_beta[key], actual_beta[key]
+            print(key, expected_beta[key], actual_beta[key])
             self.assertAlmostEqual(actual_beta[key], expected_beta[key])
 
     def test_forward_backward_same_partition_value(self):
@@ -356,8 +356,8 @@ class TestModel(unittest.TestCase):
         actual_alpha = test_model._forward(x_dot_parameters)
         actual_beta = test_model._backward(x_dot_parameters)
 
-        print actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)]
-        print actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)]
+        print(actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)])
+        print(actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)])
         self.assertAlmostEqual(actual_alpha[(1, 1, 0)], actual_beta[(0, 0, 0)] + (np.dot(x[0, 0, :], parameters[0, :])))
         self.assertAlmostEqual(actual_alpha[(1, 1, 1)], actual_beta[(0, 0, 1)] + (np.dot(x[0, 0, :], parameters[1, :])))
 
@@ -378,7 +378,7 @@ class TestModel(unittest.TestCase):
         y = 'a'
         state_machine = DefaultStateMachine(classes)
         test_model = _Model(state_machine, x, y)
-        print test_model._lattice
+        print(test_model._lattice)
         #
         # 0   01 --- 01
         #     0      1
@@ -398,20 +398,20 @@ class TestModel(unittest.TestCase):
         # Finite difference gradient approximation
         delta = 10.0**-7
         S, D = expected_dll.shape
-        for s in xrange(S):
-            for d in xrange(D):
+        for s in range(S):
+            for d in range(D):
                 dg = np.zeros(parameters.shape)
                 dg[s, d] = delta
                 y0, _ = test_model.forward_backward(parameters)
                 y1, _ = test_model.forward_backward(parameters + dg)
-                print s, d, y0, y1
+                print(s, d, y0, y1)
                 expected_dll[s, d] = (y1 - y0) / delta
 
         actual_ll, actual_dll = test_model.forward_backward(parameters)
 
-        print expected_ll, actual_ll
-        print expected_dll
-        print actual_dll
+        print(expected_ll, actual_ll)
+        print(expected_dll)
+        print(actual_dll)
         self.assertAlmostEqual(actual_ll, expected_ll)
         assert_array_almost_equal(actual_dll, expected_dll, decimal=TEST_PRECISION)
 
@@ -425,26 +425,26 @@ class TestModel(unittest.TestCase):
         y = 'a'
         state_machine = DefaultStateMachine(classes)
         test_model = _Model(state_machine, x, y)
-        print test_model._lattice
+        print(test_model._lattice)
 
         expected_dll = np.zeros(parameters.shape)
 
         # Finite difference gradient approximation
         delta = 10.0**-7
         S, D = expected_dll.shape
-        for s in xrange(S):
-            for d in xrange(D):
+        for s in range(S):
+            for d in range(D):
                 dg = np.zeros(parameters.shape)
                 dg[s, d] = delta
                 y0, _ = test_model.forward_backward(parameters)
                 y1, _ = test_model.forward_backward(parameters + dg)
-                print s, d, y0, y1
+                print(s, d, y0, y1)
                 expected_dll[s, d] = (y1 - y0) / delta
 
         actual_ll, actual_dll = test_model.forward_backward(parameters)
 
-        print expected_dll
-        print actual_dll
+        print(expected_dll)
+        print(actual_dll)
         assert_array_almost_equal(actual_dll, expected_dll, decimal=TEST_PRECISION)
 
     def test_derivate_large(self):
@@ -456,26 +456,26 @@ class TestModel(unittest.TestCase):
         parameters = random.randn(*parameters.shape) * 10 - 2
 
         test_model = _Model(state_machine, x, y)
-        print test_model._lattice
+        print(test_model._lattice)
 
         expected_dll = np.zeros(parameters.shape)
 
         # Finite difference gradient approximation
         delta = 10.0**-7
         S, D = expected_dll.shape
-        for s in xrange(S):
-            for d in xrange(D):
+        for s in range(S):
+            for d in range(D):
                 dg = np.zeros(parameters.shape)
                 dg[s, d] = delta
                 y0, _ = test_model.forward_backward(parameters)
                 y1, _ = test_model.forward_backward(parameters + dg)
-                print s, d, y0, y1
+                print(s, d, y0, y1)
                 expected_dll[s, d] = (y1 - y0) / delta
 
         actual_ll, actual_dll = test_model.forward_backward(parameters)
 
-        print expected_dll
-        print actual_dll
+        print(expected_dll)
+        print(actual_dll)
         self.assertEqual((np.isnan(actual_dll)).any(), False)
         assert_array_almost_equal(actual_dll, expected_dll, decimal=TEST_PRECISION)
 

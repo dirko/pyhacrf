@@ -149,8 +149,8 @@ class Hacrf(object):
         """
         class_to_index = {class_name: index for index, class_name in enumerate(self.classes)}
         return np.array(
-            [zip(*sorted(_Model(self._state_machine, x).predict(self.parameters).items(),
-                         key=lambda item: class_to_index[item[0]]))[1] for x in X])
+            [list(zip(*sorted(_Model(self._state_machine, x).predict(self.parameters).items(),
+                         key=lambda item: class_to_index[item[0]])))[1] for x in X])
 
     def predict(self, X):
         """Predict the class for X.
@@ -226,7 +226,7 @@ class _Model(object):
         beta = self._backward(x_dot_parameters)
 
         derivative = np.zeros(parameters.shape)
-        for node in alpha.viewkeys() | beta.viewkeys() :
+        for node in set(alpha.keys()) | set(beta.keys()) :
             alphabeta = alpha[node] + beta[node]
             if len(node) == 3:
                 i, j, s = node
@@ -257,7 +257,7 @@ class _Model(object):
             class_Z[self.states_to_classes[state]] = weight
             Z = np.logaddexp(Z, weight)
 
-        return {label: np.exp(class_z - Z) for label, class_z in class_Z.iteritems()}
+        return {label: np.exp(class_z - Z) for label, class_z in class_Z.items()}
 
     def _forward_probabilities(self, x_dot_parameters):
         """ Helper to calculate the forward probabilities and the predicted probability
