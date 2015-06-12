@@ -119,6 +119,7 @@ class PairFeatureExtractor(object):
 
             for i, j in np.ndindex(len(sequence1), len(sequence2)):
                 k = n_binary_features
+
                 for feature_function, num_features in self._sparse_features:
                     
                     feature_array[i, j, k + feature_function(i, j, sequence1, sequence2)] = 1.0
