@@ -5,9 +5,10 @@
 
 import numpy as np
 import lbfgs
-from .algorithms import forward, backward
-from .algorithms import forward_predict
-from .state_machine import DefaultStateMachine
+from algorithms import forward, backward
+from algorithms import forward_predict, gradient
+from state_machine import DefaultStateMachine
+from feature_extraction import StringPairFeatureExtractor
 
 
 class Hacrf(object):
@@ -219,28 +220,14 @@ class _Model(object):
         self.y = y
         self._lattice = self.state_machine.build_lattice(self.x)
 
+    @profile
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
         x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
-        alpha, class_Z, Z = self._forward_probabilities(x_dot_parameters)
+        alpha = self._forward(x_dot_parameters)
         beta = self._backward(x_dot_parameters)
-
-        derivative = np.zeros(parameters.shape)
-        for node in alpha.viewkeys() | beta.viewkeys() :
-            alphabeta = alpha[node] + beta[node]
-            if len(node) == 3:
-                i, j, s = node
-                E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i, j, :]) if self.states_to_classes[s] == self.y else 0.0
-                E_Z = np.exp(alphabeta - Z) * self.x[i, j, :]
-                derivative[s, :] += E_f - E_Z
-
-            else:
-                i0, j0, s0, i1, j1, s1, edge_parameter_index = node
-                E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i1, j1, :]) if self.states_to_classes[s1] == self.y else 0.0
-                E_Z = np.exp(alphabeta - Z) * self.x[i1, j1, :]
-                derivative[edge_parameter_index, :] += E_f - E_Z
-
-        return (class_Z[self.y]) - (Z), derivative
+        I, J, _ = self.x.shape
+        return gradient(alpha, beta, parameters, self.states_to_classes, self.x, self.y, I, J)
 
     def predict(self, parameters):
         """ Run forward algorithm to find the predicted distribution over classes. """
@@ -259,21 +246,6 @@ class _Model(object):
 
         return {label: np.exp(class_z - Z) for label, class_z in class_Z.iteritems()}
 
-    def _forward_probabilities(self, x_dot_parameters):
-        """ Helper to calculate the forward probabilities and the predicted probability
-        distribution over classes given some parameters. """
-        alpha = self._forward(x_dot_parameters)
-        I, J, _ = self.x.shape
-
-        class_Z = {}
-        Z = -np.inf
-
-        for state, predicted_class in self.states_to_classes.items():
-            weight = alpha[(I - 1, J - 1, state)]
-            class_Z[self.states_to_classes[state]] = weight
-            Z = np.logaddexp(Z, weight)
-        return alpha, class_Z, Z
-
     def _forward(self, x_dot_parameters):
         """ Helper to calculate the forward weights.  """
         return forward(self._lattice, x_dot_parameters, 
@@ -287,3 +259,44 @@ class _Model(object):
 
 
 
+def test_fit_predict_regularized():
+    incorrect = ['helloooo', 'freshh', 'ffb', 'h0me', 'wonderin', 'relaionship', 'hubby', 'krazii', 'mite', 'tropic']
+    correct = ['hello', 'fresh', 'facebook', 'home', 'wondering', 'relationship', 'husband', 'crazy', 'might', 'topic']
+    training = zip(incorrect, correct)
+
+    fe = StringPairFeatureExtractor(match=True, numeric=True)
+    xf = fe.fit_transform(training)
+
+    model = Hacrf(l2_regularization=10.0)
+    model.fit(xf, [0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
+
+    expected_parameters = np.array([[-0.0569188, 0.07413339, 0.],
+                                    [0.00187709, -0.06377866, 0.],
+                                    [-0.01908823, 0.00586189, 0.],
+                                    [0.01721114, -0.00636556, 0.],
+                                    [0.01578279, 0.0078614, 0.],
+                                    [-0.0139057, -0.00862948, 0.],
+                                    [-0.00623241, 0.02937325, 0.],
+                                    [0.00810951, -0.01774676, 0.]])
+
+    from numpy.testing import assert_array_almost_equal
+    assert_array_almost_equal(model.parameters, expected_parameters)
+
+    expected_probas = np.array([[0.5227226, 0.4772774],
+                                [0.52568993, 0.47431007],
+                                [0.4547091, 0.5452909],
+                                [0.51179222, 0.48820778],
+                                [0.46347576, 0.53652424],
+                                [0.45710098, 0.54289902],
+                                [0.46159657, 0.53840343],
+                                [0.42997978, 0.57002022],
+                                [0.47419724, 0.52580276],
+                                [0.50797852, 0.49202148]])
+    actual_predict_probas = model.predict_proba(xf)
+    assert_array_almost_equal(actual_predict_probas, expected_probas)
+
+    expected_predictions = np.array([0, 0, 1, 0, 1, 1, 1, 1, 1, 0])
+    actual_predictions = model.predict(xf)
+    assert_array_almost_equal(actual_predictions, expected_predictions)
+
+test_fit_predict_regularized()

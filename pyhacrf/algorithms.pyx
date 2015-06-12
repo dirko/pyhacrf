@@ -92,8 +92,8 @@ cpdef ndarray[double, ndim=3] forward_predict(ndarray[long, ndim=2] lattice, nda
     return alpha
 
 
-cpdef dict backward(np.ndarray[long, ndim=2] lattice, 
-                    np.ndarray[double, ndim=3] x_dot_parameters, 
+cpdef dict backward(ndarray[long, ndim=2] lattice,
+                    ndarray[double, ndim=3] x_dot_parameters,
                     long I, long J, long S):
     """ Helper to calculate the backward weights.  """
     cdef dict beta = {}
@@ -120,3 +120,38 @@ cpdef dict backward(np.ndarray[long, ndim=2] lattice,
                                                            j1, 
                                                            edge_parameter_index]))
     return beta
+
+
+def gradient(dict alpha,
+                dict beta,
+                ndarray[double, ndim=2] parameters,
+                dict states_to_classes,
+                ndarray[double, ndim=3] x,
+                object y,
+                long I, long J):
+    """ Helper to calculate the marginals and from that the gradient given the forward and backward weights. """
+    class_Z = {}
+    Z = -inf
+
+    for state, predicted_class in states_to_classes.items():
+        weight = alpha[(I - 1, J - 1, state)]
+        class_Z[states_to_classes[state]] = weight
+        Z = logaddexp(Z, weight)
+
+    cdef ndarray[double, ndim=2] derivative = np.full_like(parameters, 0.0)
+
+    for node in alpha.viewkeys() | beta.viewkeys():
+        alphabeta = alpha[node] + beta[node]
+        if len(node) == 3:
+            i, j, s = node
+            E_f = (np.exp(alphabeta - class_Z[y]) * x[i, j, :]) if states_to_classes[s] == y else 0.0
+            E_Z = np.exp(alphabeta - Z) * x[i, j, :]
+            derivative[s, :] += E_f - E_Z
+
+        else:
+            i0, j0, s0, i1, j1, s1, edge_parameter_index = node
+            E_f = (np.exp(alphabeta - class_Z[y]) * x[i1, j1, :]) if states_to_classes[s1] == y else 0.0
+            E_Z = np.exp(alphabeta - Z) * x[i1, j1, :]
+            derivative[edge_parameter_index, :] += E_f - E_Z
+
+    return (class_Z[y]) - (Z), derivative
