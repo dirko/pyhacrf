@@ -69,7 +69,7 @@ class GeneralStateMachine(object):
 
         # Step backwards through lattice and add visitable nodes to the set of nodes to keep. The rest are discarded.
         final_lattice = []
-        visited_nodes = set((I-1, J-1, s) for s in xrange(n_states))
+        visited_nodes = set((I-1, J-1, s) for s in range(n_states))
 
         for node in lattice[::-1]:
             if node in visited_nodes:

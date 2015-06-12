@@ -236,7 +236,7 @@ class TestModel(unittest.TestCase):
         x_dot_parameters = np.dot(x, parameters.T)  # Pre-compute the dot product
         actual_alpha = test_model._forward(x_dot_parameters)
 
-        actual_alpha = {k : v for k, v in actual_alpha.items() 
+        actual_alpha = {k: v for k, v in actual_alpha.items()
                         if not np.isneginf(v)}
         print(actual_alpha)
 

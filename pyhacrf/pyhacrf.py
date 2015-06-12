@@ -226,7 +226,7 @@ class _Model(object):
         beta = self._backward(x_dot_parameters)
 
         derivative = np.zeros(parameters.shape)
-        for node in set(alpha.keys()) | set(beta.keys()) :
+        for node in set(alpha.keys()) | set(beta.keys()):
             alphabeta = alpha[node] + beta[node]
             if len(node) == 3:
                 i, j, s = node
