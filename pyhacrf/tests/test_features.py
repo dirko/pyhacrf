@@ -37,7 +37,7 @@ class TestStringPairFeatureExtractor(unittest.TestCase):
         #   c a
         chars = StringPairFeatureExtractor.CHARACTERS
         nchars = len(chars)
-        print nchars
+        print(nchars)
         expected_x = np.zeros((2, 2, len(chars)**2 + 1))
         expected_x[:, :, 0] = 1.0
         expected_x[0, 0, 2 + nchars * 1 + 1] = 1.0  # b->c

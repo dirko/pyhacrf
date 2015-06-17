@@ -5,10 +5,9 @@
 
 import numpy as np
 import lbfgs
-from algorithms import forward, backward
-from algorithms import forward_predict, gradient
-from state_machine import DefaultStateMachine
-from feature_extraction import StringPairFeatureExtractor
+from .algorithms import forward, backward
+from .algorithms import forward_predict
+from .state_machine import DefaultStateMachine
 
 
 class Hacrf(object):
@@ -150,8 +149,8 @@ class Hacrf(object):
         """
         class_to_index = {class_name: index for index, class_name in enumerate(self.classes)}
         return np.array(
-            [zip(*sorted(_Model(self._state_machine, x).predict(self.parameters).items(),
-                         key=lambda item: class_to_index[item[0]]))[1] for x in X])
+            [list(zip(*sorted(_Model(self._state_machine, x).predict(self.parameters).items(),
+                         key=lambda item: class_to_index[item[0]])))[1] for x in X])
 
     def predict(self, X):
         """Predict the class for X.
@@ -220,7 +219,6 @@ class _Model(object):
         self.y = y
         self._lattice = self.state_machine.build_lattice(self.x)
 
-    @profile
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
         x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
@@ -244,7 +242,7 @@ class _Model(object):
             class_Z[self.states_to_classes[state]] = weight
             Z = np.logaddexp(Z, weight)
 
-        return {label: np.exp(class_z - Z) for label, class_z in class_Z.iteritems()}
+        return {label: np.exp(class_z - Z) for label, class_z in class_Z.items()}
 
     def _forward(self, x_dot_parameters):
         """ Helper to calculate the forward weights.  """
