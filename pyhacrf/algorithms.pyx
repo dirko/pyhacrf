@@ -123,33 +123,40 @@ cpdef dict backward(ndarray[long, ndim=2] lattice,
 
 
 def gradient(dict alpha,
-                dict beta,
-                ndarray[double, ndim=2] parameters,
-                dict states_to_classes,
-                ndarray[double, ndim=3] x,
-                object y,
-                long I, long J):
+             dict beta,
+             ndarray[double, ndim=2] parameters,
+             ndarray[long] states_to_classes,
+             ndarray[double, ndim=3] x,
+             long y,
+             long I, long J):
     """ Helper to calculate the marginals and from that the gradient given the forward and backward weights. """
-    class_Z = {}
-    Z = -inf
+    cdef ndarray[double] class_Z = np.zeros((max(states_to_classes) + 1))
+    cdef double Z = -inf
+    cdef double weight
 
-    for state, predicted_class in states_to_classes.items():
-        weight = alpha[(I - 1, J - 1, state)]
-        class_Z[states_to_classes[state]] = weight
+    for state, clas in enumerate(states_to_classes):
+        weight = <double> alpha[(I - 1, J - 1, state)]
+        class_Z[clas] = weight
         Z = logaddexp(Z, weight)
 
     cdef ndarray[double, ndim=2] derivative = np.full_like(parameters, 0.0)
+    cdef unsigned int i0, j0, s0, i1, j1, s1, edge_parameter_index
+    cdef double alphabeta
 
     for node in alpha.viewkeys() | beta.viewkeys():
-        alphabeta = alpha[node] + beta[node]
         if len(node) == 3:
-            i, j, s = node
-            E_f = (np.exp(alphabeta - class_Z[y]) * x[i, j, :]) if states_to_classes[s] == y else 0.0
-            E_Z = np.exp(alphabeta - Z) * x[i, j, :]
-            derivative[s, :] += E_f - E_Z
+            i0, j0, s0 = node
+            alphabeta = <double>alpha[(i0, j0, s0)] + <double>beta[(i0, j0, s0)]
+
+            E_f = (np.exp(alphabeta - class_Z[y]) * x[i0, j0, :]) if states_to_classes[s0] == y else 0.0
+            E_Z = np.exp(alphabeta - Z) * x[i0, j0, :]
+            derivative[s0, :] += E_f - E_Z
 
         else:
             i0, j0, s0, i1, j1, s1, edge_parameter_index = node
+            alphabeta = <double>alpha[(i0, j0, s0, i1, j1, s1, edge_parameter_index)] \
+                        + <double>beta[(i0, j0, s0, i1, j1, s1, edge_parameter_index)]
+
             E_f = (np.exp(alphabeta - class_Z[y]) * x[i1, j1, :]) if states_to_classes[s1] == y else 0.0
             E_Z = np.exp(alphabeta - Z) * x[i1, j1, :]
             derivative[edge_parameter_index, :] += E_f - E_Z
