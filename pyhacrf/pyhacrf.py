@@ -219,7 +219,6 @@ class _Model(object):
         self.y = y
         self._lattice = self.state_machine.build_lattice(self.x)
 
-    @profile
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
         x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
