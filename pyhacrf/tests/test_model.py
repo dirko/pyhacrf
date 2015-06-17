@@ -374,7 +374,7 @@ class TestModel(unittest.TestCase):
         #6  [ 4,  5],
         #7  [ 6,  7]])
         x = np.array([[[0, 1],
-                       [1, 2]]])
+                       [1, 2]]], dtype='float64')
         y = 'a'
         state_machine = DefaultStateMachine(classes)
         test_model = _Model(state_machine, x, y)
@@ -421,7 +421,7 @@ class TestModel(unittest.TestCase):
         x = np.array([[[0, 1],
                        [2, 1]],
                       [[0, 1],
-                       [1, 0]]])
+                       [1, 0.0]]])
         y = 'a'
         state_machine = DefaultStateMachine(classes)
         test_model = _Model(state_machine, x, y)

@@ -7,6 +7,7 @@ import numpy as np
 import lbfgs
 from .algorithms import forward, backward
 from .algorithms import forward_predict
+from .algorithms import gradient
 from .state_machine import DefaultStateMachine
 
 
@@ -178,7 +179,6 @@ class Hacrf(object):
                          + state_machine.n_transitions,
                          n_features))
 
-
     def get_params(self, deep=True):
         """Get parameters for this estimator.
 
@@ -222,25 +222,14 @@ class _Model(object):
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
         x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
-        alpha, class_Z, Z = self._forward_probabilities(x_dot_parameters)
+        alpha = self._forward(x_dot_parameters)
         beta = self._backward(x_dot_parameters)
-
-        derivative = np.zeros(parameters.shape)
-        for node in set(alpha.keys()) | set(beta.keys()):
-            alphabeta = alpha[node] + beta[node]
-            if len(node) == 3:
-                i, j, s = node
-                E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i, j, :]) if self.states_to_classes[s] == self.y else 0.0
-                E_Z = np.exp(alphabeta - Z) * self.x[i, j, :]
-                derivative[s, :] += E_f - E_Z
-
-            else:
-                i0, j0, s0, i1, j1, s1, edge_parameter_index = node
-                E_f = (np.exp(alphabeta - class_Z[self.y]) * self.x[i1, j1, :]) if self.states_to_classes[s1] == self.y else 0.0
-                E_Z = np.exp(alphabeta - Z) * self.x[i1, j1, :]
-                derivative[edge_parameter_index, :] += E_f - E_Z
-
-        return (class_Z[self.y]) - (Z), derivative
+        I, J, _ = self.x.shape
+        classes_to_ints = {k: i for i, k in enumerate(set(self.states_to_classes.values()))}
+        states_to_classes = np.array([classes_to_ints[self.states_to_classes[state]]
+                                      for state in range(max(self.states_to_classes.keys()) + 1)])
+        ll, deriv = gradient(alpha, beta, parameters, states_to_classes, self.x, classes_to_ints[self.y], I, J)
+        return ll, deriv
 
     def predict(self, parameters):
         """ Run forward algorithm to find the predicted distribution over classes. """
@@ -259,21 +248,6 @@ class _Model(object):
 
         return {label: np.exp(class_z - Z) for label, class_z in class_Z.items()}
 
-    def _forward_probabilities(self, x_dot_parameters):
-        """ Helper to calculate the forward probabilities and the predicted probability
-        distribution over classes given some parameters. """
-        alpha = self._forward(x_dot_parameters)
-        I, J, _ = self.x.shape
-
-        class_Z = {}
-        Z = -np.inf
-
-        for state, predicted_class in self.states_to_classes.items():
-            weight = alpha[(I - 1, J - 1, state)]
-            class_Z[self.states_to_classes[state]] = weight
-            Z = np.logaddexp(Z, weight)
-        return alpha, class_Z, Z
-
     def _forward(self, x_dot_parameters):
         """ Helper to calculate the forward weights.  """
         return forward(self._lattice, x_dot_parameters, 
@@ -284,6 +258,3 @@ class _Model(object):
         I, J, _ = self.x.shape
         return backward(self._lattice, x_dot_parameters, I, J,
                         self.state_machine.n_states)
-
-
-
