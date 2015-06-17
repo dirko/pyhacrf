@@ -5,6 +5,8 @@ cimport numpy as np
 from numpy import ndarray
 from numpy cimport ndarray
 from numpy.math cimport logaddexp, INFINITY as inf
+cdef extern from "math.h":
+    double exp(double x)
 
 
 cpdef dict forward(np.ndarray[long, ndim=2] lattice, np.ndarray[double, ndim=3] x_dot_parameters, long S):
@@ -130,7 +132,8 @@ def gradient(dict alpha,
              long y,
              long I, long J):
     """ Helper to calculate the marginals and from that the gradient given the forward and backward weights. """
-    cdef ndarray[double] class_Z = np.zeros((max(states_to_classes) + 1))
+    cdef int S = max(states_to_classes) + 1
+    cdef ndarray[double] class_Z = np.zeros((S,))
     cdef double Z = -inf
     cdef double weight
 
@@ -148,17 +151,19 @@ def gradient(dict alpha,
             i0, j0, s0 = node
             alphabeta = <double>alpha[(i0, j0, s0)] + <double>beta[(i0, j0, s0)]
 
-            E_f = (np.exp(alphabeta - class_Z[y]) * x[i0, j0, :]) if states_to_classes[s0] == y else 0.0
-            E_Z = np.exp(alphabeta - Z) * x[i0, j0, :]
-            derivative[s0, :] += E_f - E_Z
+            for s in range(S):
+                E_f = (exp(alphabeta - class_Z[y]) * x[i0, j0, s]) if states_to_classes[s0] == y else 0.0
+                E_Z = exp(alphabeta - Z) * x[i0, j0, s]
+                derivative[s0, s] += E_f - E_Z
 
         else:
             i0, j0, s0, i1, j1, s1, edge_parameter_index = node
             alphabeta = <double>alpha[(i0, j0, s0, i1, j1, s1, edge_parameter_index)] \
                         + <double>beta[(i0, j0, s0, i1, j1, s1, edge_parameter_index)]
 
-            E_f = (np.exp(alphabeta - class_Z[y]) * x[i1, j1, :]) if states_to_classes[s1] == y else 0.0
-            E_Z = np.exp(alphabeta - Z) * x[i1, j1, :]
-            derivative[edge_parameter_index, :] += E_f - E_Z
+            for s in range(S):
+                E_f = (exp(alphabeta - class_Z[y]) * x[i1, j1, s]) if states_to_classes[s1] == y else 0.0
+                E_Z = exp(alphabeta - Z) * x[i1, j1, s]
+                derivative[edge_parameter_index, s] += E_f - E_Z
 
     return (class_Z[y]) - (Z), derivative
