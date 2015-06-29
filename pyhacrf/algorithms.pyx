@@ -151,19 +151,19 @@ def gradient(dict alpha,
             i0, j0, s0 = node
             alphabeta = <double>alpha[(i0, j0, s0)] + <double>beta[(i0, j0, s0)]
 
-            for k in range(K):
-                E_f = (exp(alphabeta - class_Z[y]) * x[i0, j0, k]) if states_to_classes[s0] == y else 0.0
-                E_Z = exp(alphabeta - Z) * x[i0, j0, k]
-                derivative[s0, k] += E_f - E_Z
+            if states_to_classes[s0] == y:
+                derivative[s0, :] += (exp(alphabeta - class_Z[y]) - exp(alphabeta - Z)) * x[i0, j0, :]
+            else:
+                derivative[s0, :] -= exp(alphabeta - Z) * x[i0, j0, :]
 
         else:
             i0, j0, s0, i1, j1, s1, edge_parameter_index = node
             alphabeta = <double>alpha[(i0, j0, s0, i1, j1, s1, edge_parameter_index)] \
                         + <double>beta[(i0, j0, s0, i1, j1, s1, edge_parameter_index)]
 
-            for k in range(K):
-                E_f = (exp(alphabeta - class_Z[y]) * x[i1, j1, k]) if states_to_classes[s1] == y else 0.0
-                E_Z = exp(alphabeta - Z) * x[i1, j1, k]
-                derivative[edge_parameter_index, k] += E_f - E_Z
+            if states_to_classes[s1] == y:
+                derivative[edge_parameter_index, :] += (exp(alphabeta - class_Z[y]) - exp(alphabeta - Z)) * x[i1, j1, :]
+            else:
+                derivative[edge_parameter_index, :] -= exp(alphabeta - Z) * x[i1, j1, :]
 
     return (class_Z[y]) - (Z), derivative
