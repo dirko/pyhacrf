@@ -224,11 +224,11 @@ class _Model(object):
         x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
         alpha = self._forward(x_dot_parameters)
         beta = self._backward(x_dot_parameters)
-        I, J, _ = self.x.shape
+        I, J, K = self.x.shape
         classes_to_ints = {k: i for i, k in enumerate(set(self.states_to_classes.values()))}
         states_to_classes = np.array([classes_to_ints[self.states_to_classes[state]]
                                       for state in range(max(self.states_to_classes.keys()) + 1)])
-        ll, deriv = gradient(alpha, beta, parameters, states_to_classes, self.x, classes_to_ints[self.y], I, J)
+        ll, deriv = gradient(alpha, beta, parameters, states_to_classes, self.x, classes_to_ints[self.y], I, J, K)
         return ll, deriv
 
     def predict(self, parameters):
