@@ -132,10 +132,11 @@ def gradient(dict alpha,
              long y,
              long I, long J, long K):
     """ Helper to calculate the marginals and from that the gradient given the forward and backward weights. """
-    cdef int C = max(states_to_classes) + 1
-    cdef ndarray[double] class_Z = np.zeros((C,))
+    cdef unsigned int n_classes = max(states_to_classes) + 1
+    cdef ndarray[double] class_Z = np.zeros((n_classes,))
     cdef double Z = -inf
     cdef double weight
+    cdef unsigned int k
 
     for state, clas in enumerate(states_to_classes):
         weight = <double> alpha[(I - 1, J - 1, state)]
@@ -151,19 +152,114 @@ def gradient(dict alpha,
             i0, j0, s0 = node
             alphabeta = <double>alpha[(i0, j0, s0)] + <double>beta[(i0, j0, s0)]
 
-            if states_to_classes[s0] == y:
-                derivative[s0, :] += (exp(alphabeta - class_Z[y]) - exp(alphabeta - Z)) * x[i0, j0, :]
-            else:
-                derivative[s0, :] -= exp(alphabeta - Z) * x[i0, j0, :]
+            for k in range(K):
+                if states_to_classes[s0] == y:
+                    derivative[s0, k] += (exp(alphabeta - class_Z[y]) - exp(alphabeta - Z)) * x[i0, j0, k]
+                else:
+                    derivative[s0, k] -= exp(alphabeta - Z) * x[i0, j0, k]
 
         else:
             i0, j0, s0, i1, j1, s1, edge_parameter_index = node
             alphabeta = <double>alpha[(i0, j0, s0, i1, j1, s1, edge_parameter_index)] \
                         + <double>beta[(i0, j0, s0, i1, j1, s1, edge_parameter_index)]
 
-            if states_to_classes[s1] == y:
-                derivative[edge_parameter_index, :] += (exp(alphabeta - class_Z[y]) - exp(alphabeta - Z)) * x[i1, j1, :]
-            else:
-                derivative[edge_parameter_index, :] -= exp(alphabeta - Z) * x[i1, j1, :]
+            for k in xrange(K):
+                if states_to_classes[s1] == y:
+                    derivative[edge_parameter_index, k] += (exp(alphabeta - class_Z[y]) - exp(alphabeta - Z)) * x[i1, j1, k]
+                else:
+                    derivative[edge_parameter_index, k] -= exp(alphabeta - Z) * x[i1, j1, k]
 
     return (class_Z[y]) - (Z), derivative
+
+
+def gradient_sparse(dict alpha,
+                    dict beta,
+                    ndarray[double, ndim=2] parameters,
+                    ndarray[long] states_to_classes,
+                    ndarray[long, ndim=3] x_index,
+                    ndarray[double, ndim=3] x_value,
+                    long y,
+                    long I, long J, long K):
+    """
+    Helper to calculate the marginals and from that the gradient given the forward and backward weights, for
+    sparse input features.
+    """
+    cdef unsigned int n_classes = max(states_to_classes) + 1
+    cdef ndarray[double] class_Z = np.zeros((n_classes,))
+    cdef double Z = -inf
+    cdef double weight
+    cdef unsigned int C = K
+    cdef unsigned int c
+    cdef int k
+
+    for state, clas in enumerate(states_to_classes):
+        weight = <double> alpha[(I - 1, J - 1, state)]
+        class_Z[clas] = weight
+        Z = logaddexp(Z, weight)
+
+    cdef ndarray[double, ndim=2] derivative = np.full_like(parameters, 0.0)
+    cdef unsigned int i0, j0, s0, i1, j1, s1, edge_parameter_index
+    cdef double alphabeta
+
+    for node in alpha.viewkeys() | beta.viewkeys():
+        if len(node) == 3:
+            i0, j0, s0 = node
+            alphabeta = <double>alpha[(i0, j0, s0)] + <double>beta[(i0, j0, s0)]
+
+            for c in range(C):
+                k = x_index[i0, j0, c]
+                if k < 0:
+                    break
+                if states_to_classes[s0] == y:
+                    derivative[s0, k] += (exp(alphabeta - class_Z[y]) - exp(alphabeta - Z)) * x_value[i0, j0, c]
+                else:
+                    derivative[s0, k] -= exp(alphabeta - Z) * x_value[i0, j0, c]
+
+        else:
+            i0, j0, s0, i1, j1, s1, edge_parameter_index = node
+            alphabeta = <double>alpha[(i0, j0, s0, i1, j1, s1, edge_parameter_index)] \
+                                + <double>beta[(i0, j0, s0, i1, j1, s1, edge_parameter_index)]
+
+            for c in range(C):
+                k = x_index[i1, j1, c]
+                if k < 0:
+                    break
+                if states_to_classes[s1] == y:
+                    derivative[edge_parameter_index, k] += (exp(alphabeta - class_Z[y]) - exp(alphabeta - Z)) * x_value[i1, j1, c]
+                else:
+                    derivative[edge_parameter_index, k] -= exp(alphabeta - Z) * x_value[i1, j1, c]
+
+    return (class_Z[y]) - (Z), derivative
+
+
+def populate_sparse_features(ndarray[double, ndim=3] x,
+                             ndarray[long, ndim=3] index_array,
+                             ndarray[double, ndim=3] value_array,
+                             long I, long J, long K):
+    """ Helper to fill in sparse feature arrays. """
+    cdef unsigned int i, j, c, k
+    for i in range(I):
+        for j in range(J):
+            c = 0
+            for k in range(K):
+                if x[i, j, k] != 0:
+                    value_array[i, j, c] = x[i, j, k]
+                    index_array[i, j, c] = k
+                    c += 1
+
+def sparse_multiply(ndarray[double, ndim=3] answer,
+                    ndarray[long, ndim=3] index_array,
+                    ndarray[double, ndim=3] value_array,
+                    ndarray[double, ndim=2] dense_array,
+                    long I, long J, long K, long C, long S):
+    """ Multiply a sparse three dimensional numpy array (using our own scheme) with a two dimensional array. """
+    cdef unsigned int i, j, s, c
+    cdef int k
+    for i in range(I):
+        for j in range(J):
+            for s in range(S):
+                for c in range(C):
+                    k = index_array[i, j, c]
+                    if k < 0:
+                        break
+                    answer[i, j, s] += value_array[i, j, c] * dense_array[k, s]

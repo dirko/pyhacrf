@@ -7,7 +7,7 @@ import numpy as np
 import lbfgs
 from .algorithms import forward, backward
 from .algorithms import forward_predict
-from .algorithms import gradient
+from .algorithms import gradient, gradient_sparse, populate_sparse_features, sparse_multiply
 from .state_machine import DefaultStateMachine
 
 
@@ -216,19 +216,41 @@ class _Model(object):
         self.state_machine = state_machine
         self.states_to_classes = state_machine.states_to_classes
         self.x = x
+        self.sparse_x = 'uninitialized'
         self.y = y
         self._lattice = self.state_machine.build_lattice(self.x)
 
     def forward_backward(self, parameters):
         """ Run the forward backward algorithm with the given parameters. """
-        x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
+        # If the features are sparse, we can use an optimization.
+        # I'm not using scipy.sparse here because we want to avoid a scipy dependency and also scipy.sparse doesn't seem
+        # to handle arrays of shape higher than 2.
+        if isinstance(self.sparse_x, str) and self.sparse_x == 'uninitialized':
+            if (self.x == 0).sum() * 1.0 / self.x.size > 0.6:
+                self.sparse_x = self._construct_sparse_features(self.x)
+            else:
+                self.sparse_x = 'not sparse'
+
+        I, J, K = self.x.shape
+        if not isinstance(self.sparse_x, str):
+            C = self.sparse_x[0].shape[2]
+            S, _ = parameters.shape
+            x_dot_parameters = np.zeros((I, J, S))
+            sparse_multiply(x_dot_parameters, self.sparse_x[0], self.sparse_x[1], parameters.T, I, J, K, C, S)
+        else:
+            x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
         alpha = self._forward(x_dot_parameters)
         beta = self._backward(x_dot_parameters)
-        I, J, K = self.x.shape
         classes_to_ints = {k: i for i, k in enumerate(set(self.states_to_classes.values()))}
         states_to_classes = np.array([classes_to_ints[self.states_to_classes[state]]
                                       for state in range(max(self.states_to_classes.keys()) + 1)])
-        ll, deriv = gradient(alpha, beta, parameters, states_to_classes, self.x, classes_to_ints[self.y], I, J, K)
+        if not isinstance(self.sparse_x, str):
+            ll, deriv = gradient_sparse(alpha, beta, parameters, states_to_classes,
+                                        self.sparse_x[0], self.sparse_x[1], classes_to_ints[self.y],
+                                        I, J, self.sparse_x[0].shape[2])
+        else:
+            ll, deriv = gradient(alpha, beta, parameters, states_to_classes,
+                                 self.x, classes_to_ints[self.y], I, J, K)
         return ll, deriv
 
     def predict(self, parameters):
@@ -258,3 +280,12 @@ class _Model(object):
         I, J, _ = self.x.shape
         return backward(self._lattice, x_dot_parameters, I, J,
                         self.state_machine.n_states)
+
+    def _construct_sparse_features(self, x):
+        """ Helper to construct a sparse representation of the features. """
+        I, J, K = x.shape
+        new_array_height = (x != 0).sum(axis=2).max()
+        index_array = -np.ones((I, J, new_array_height), dtype='int64')
+        value_array = -np.ones((I, J, new_array_height), dtype='float64')
+        populate_sparse_features(x, index_array, value_array, I, J, K)
+        return index_array, value_array
