@@ -151,7 +151,7 @@ class Hacrf(object):
         class_to_index = {class_name: index for index, class_name in enumerate(self.classes)}
         return np.array(
             [list(zip(*sorted(_Model(self._state_machine, x).predict(self.parameters).items(),
-                         key=lambda item: class_to_index[item[0]])))[1] for x in X])
+                              key=lambda item: class_to_index[item[0]])))[1] for x in X])
 
     def predict(self, X):
         """Predict the class for X.
