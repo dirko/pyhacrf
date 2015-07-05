@@ -4,7 +4,7 @@
 """ Implements feature extraction methods to use with HACRF models. """
 
 import numpy as np
-
+import functools
 
 class PairFeatureExtractor(object):
     """ Extract features from sequence pairs.
@@ -70,7 +70,7 @@ class PairFeatureExtractor(object):
 
         Returns
         -------
-         X : List of numpy ndarrays, each with shape = (I_n, J_n, K), where I_n is the length of sequence1_n, J_n is the
+         X : List of np ndarrays, each with shape = (I_n, J_n, K), where I_n is the length of sequence1_n, J_n is the
             length of sequence2_n, and K is the number of features.
             Feature matrix list, for use with estimators or further transformers.
         """
@@ -86,7 +86,7 @@ class PairFeatureExtractor(object):
 
         Returns
         -------
-         X : List of numpy ndarrays, each with shape = (I_n, J_n, K), where I_n is the length of sequence1_n, J_n is the
+         X : List of np ndarrays, each with shape = (I_n, J_n, K), where I_n is the length of sequence1_n, J_n is the
             length of sequence2_n, and K is the number of features.
             Feature matrix list, for use with estimators or further transformers.
         """
@@ -101,18 +101,11 @@ class PairFeatureExtractor(object):
 
         feature_array = np.zeros((n_sequence1, n_sequence2, K))
 
-        I, J = np.meshgrid(np.arange(n_sequence1), 
-                           np.arange(n_sequence2), 
-                           sparse=True,
-                           copy=False,
-                           indexing="ij")
-
-        array1 = np.array(sequence1, dtype=object)
-        array2 = np.array(sequence2, dtype=object)
+        array1 = np.array(list(sequence1), ndmin=2).T
+        array2 = np.array(list(sequence2), ndmin=2)
 
         for k, feature_function in enumerate(self._binary_features):
-            feature_func = np.frompyfunc(feature_function, 4, 1)
-            feature_array[..., k] = feature_func(I, J, array1, array2)
+            feature_array[..., k] = feature_function(array1, array2)
 
         if self._sparse_features:
             n_binary_features = len(self._binary_features)
@@ -170,17 +163,20 @@ class StringPairFeatureExtractor(PairFeatureExtractor):
     # Constants
     CHARACTERS = 'abcdefghijklmnopqrstuvwxyz0123456789,./;\'\-=<>?:"|_+!@#$%^&*() '
 
+    
+
     def __init__(self, bias=1.0, start=False, end=False, match=False, numeric=False, transition=False):
         # TODO: For longer strings, tokenize and use Levenshtein
         # distance up until a lattice position.  Other (possibly)
         # useful features might be whether characters are consonant or
         # vowel, punctuation, case.
         binary_features_active = [True, start, end, match, numeric]
-        binary_features = [lambda i, j, s1, s2: bias,
-                           lambda i, j, s1, s2: 1.0 if i == 0 or j == 0 else 0.0,
-                           lambda i, j, s1, s2: 1.0 if i == len(s1) - 1 or j == len(s2) - 1 else 0.0,
-                           lambda i, j, s1, s2: 1.0 if s1[i] == s2[j] else 0.0,
-                           lambda i, j, s1, s2: 1.0 if s1[i].isdigit() and s2[j].isdigit() else 0.0]
+        binary_features = [functools.partial(biases, bias=bias),
+                           starts,
+                           ends,
+                           matches,
+                           digits]
+
         self._binary_features = [feature for feature, active in zip(binary_features, binary_features_active) if active]
         self._sparse_features = []
         if transition:
@@ -189,5 +185,30 @@ class StringPairFeatureExtractor(PairFeatureExtractor):
                                            chars_to_index[s2[j].lower()] +
                                            chars_to_index[s1[i].lower()] * len(chars_to_index)),
                                           len(characters_to_index) ** 2))
+
+
+
+def biases(s1, s2, bias=1.0) :
+    return np.full((s1.shape[0], s2.shape[1]), bias)
+
+def starts(s1, s2) :
+    M = np.zeros((s1.shape[0], s2.shape[1]))
+    M[0,...] = 1
+    M[...,0] = 1
+    return M
+
+def ends(s1, s2) :
+    M = np.zeros((s1.shape[0], s2.shape[1]))
+    M[(s1.shape[0]-1),...] = 1
+    M[...,(s2.shape[1]-1)] = 1
+    return M
+
+def matches(s1, s2) :
+    return (s1 == s2).astype('i4')
+
+def digits(s1, s2) :
+    return (np.char.isdigit(s1) & np.char.isdigit(s2)).astype('i4')
+
+
 
 
