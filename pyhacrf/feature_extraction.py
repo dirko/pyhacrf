@@ -70,7 +70,7 @@ class PairFeatureExtractor(object):
 
         Returns
         -------
-         X : List of np ndarrays, each with shape = (I_n, J_n, K), where I_n is the length of sequence1_n, J_n is the
+         X : List of numpy ndarrays, each with shape = (I_n, J_n, K), where I_n is the length of sequence1_n, J_n is the
             length of sequence2_n, and K is the number of features.
             Feature matrix list, for use with estimators or further transformers.
         """
@@ -86,7 +86,7 @@ class PairFeatureExtractor(object):
 
         Returns
         -------
-         X : List of np ndarrays, each with shape = (I_n, J_n, K), where I_n is the length of sequence1_n, J_n is the
+         X : List of numpy ndarrays, each with shape = (I_n, J_n, K), where I_n is the length of sequence1_n, J_n is the
             length of sequence2_n, and K is the number of features.
             Feature matrix list, for use with estimators or further transformers.
         """
