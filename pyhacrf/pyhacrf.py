@@ -110,6 +110,8 @@ class Hacrf(object):
                     print('{:10} {:10.4} {:10.4}'.format(self._evaluation_count, ll, (abs(gradient).sum())))
             self._evaluation_count += 1
 
+            # TODO: Allow some of the parameters to be frozen. ie. not trained. Can later also completely remove
+            # TODO:     the computation associated with these parameters.
             return -ll, -gradient
 
         def _objective_copy_gradient(paramers, g):
