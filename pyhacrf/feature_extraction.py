@@ -48,10 +48,10 @@ class PairFeatureExtractor(object):
                                 ['s']])
         > array2 = numpy.array([['c', 'h', 'e', 'e', 's', 'e'])
         > array1 == array2
-        numpy.array([[0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0],
-                     [0, 0, 0, 1, 0]])
+        numpy.array([[0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 1, 0]])
 
     When writing you own real feature functions, you can assume that
     the arrays will come in with the right shape.    
