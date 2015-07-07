@@ -7,35 +7,66 @@ import numpy as np
 import functools
 
 class PairFeatureExtractor(object):
-    """ Extract features from sequence pairs.
+    """Extract features from sequence pairs.
 
-    A grid is constructed for each sequence pair, for example (['k', 'a', 'a', 's'], ['c', 'h', 'e', 'e', 's', 'e']):
+    For each feature, a grid is constructed for a sequency pair. The 
+    features are stacked, producing a 3 dimensional matrix of 
+    dimensions: 
 
-     s * . . . @ .
-     a * . . . . .
-     a * . . . . .
-     k * * * * * *
+    (length of sequence 1) X (length of sequence 2) X (number of features)
+
+    For example, a 'beginning' character feature grid for the sequences,
+    'kaas' and 'cheese' could look like this.
+
        c h e e s e
+     k 1 1 1 1 1 1
+     a 1 0 0 0 0 0
+     a 1 0 0 0 0 0
+     s 1 0 0 0 0 0
 
-    For each element in the grid, a feature vector is constructed. There are two types of features - real and sparse.
+    These grids are made from two different types of feature
+    functions: real and sparse.
+
     Real features are functions of the form:
-        def some_feature_function(i, j, s1, s2):
+
+        def some_feature_function(array1, array2):
             ...
-            return some_float
-    Given the position in the lattice (i, j) and the two sequences s1 and s2, the function returns a float/int.
-    For example, if 3.2 is returned then the feature vector [3.2] is constructed.
+            return feature_grid
+
+    Given two sequences, s1 and s1, return a numpy.array with dimensions 
+    (length of array1) X (length of array2).
+
+    For performance reasons, we take advantage of numpy broadcasting, and 
+    array1 is a column array and array2 is a row array. 
+
+    For a 'matching character' feature between 'kaas' and 'cheese', the
+    sequences are transformed and then we use broadcasting
+
+        > array1 = numpy.array([['k'],
+                                ['a'],
+                                ['a'],
+                                ['s']])
+        > array2 = numpy.array([['c', 'h', 'e', 'e', 's', 'e'])
+        > array1 == array2
+        numpy.array([[0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0],
+                     [0, 0, 0, 1, 0]])
+
+    When writing you own real feature functions, you can assume that
+    the arrays will come in with the right shape.    
 
     Sparse feature functions look similar:
+
         def some_feature_function(i, j, s1, s2):
             ...
             return some_index, total_vector_length
-    but they always return two ints. The first is the index of the element that should be 1 and the second is the total
-    length of vector. So for example if (4, 5) is returned, then the feature vector [0, 0, 0, 0, 1] is constructed.
 
-    After evaluating all the real and sparse functions at a certain lattice position the final feature vector for that
-    lattice position is constructed by concatenating all these vectors. For example if there are the real vectors
-    [3.2], [0.0], and [1.0] and the sparse vector [0, 0, 0, 0, 1] then the final vector will be
-    [3.2, 0.0, 1.0, 0, 0, 0, 0, 1].
+    but they always return two ints. The first is the index of the
+    element that should be 1 and the second is the total length of
+    vector. So for example if (4, 5) is returned, then the feature
+    vector [0, 0, 0, 0, 1] is constructed.
+
 
     Parameters
     ----------
@@ -50,6 +81,7 @@ class PairFeatureExtractor(object):
             def some_feature_function(i, j, s1, s2):
                 ...
                 return some_index, total_vector_length
+
     """
 
     def __init__(self, real=None, sparse=None):
@@ -94,15 +126,14 @@ class PairFeatureExtractor(object):
 
     def _extract_features(self, sequence1, sequence2):
         """ Helper to extract features for one data point. """
-        n_sequence1 = len(sequence1) 
-        n_sequence2 = len(sequence2) 
+
+        array1 = np.array(tuple(sequence1), ndmin=2).T
+        array2 = np.array(tuple(sequence2), ndmin=2)
+
         K = (len(self._binary_features) 
              + sum(num_feats for _, num_feats in self._sparse_features))
 
-        feature_array = np.zeros((n_sequence1, n_sequence2, K))
-
-        array1 = np.array(list(sequence1), ndmin=2).T
-        array2 = np.array(list(sequence2), ndmin=2)
+        feature_array = np.zeros((array1.size, array2.size, K))
 
         for k, feature_function in enumerate(self._binary_features):
             feature_array[..., k] = feature_function(array1, array2)
@@ -189,25 +220,25 @@ class StringPairFeatureExtractor(PairFeatureExtractor):
 
 
 def biases(s1, s2, bias=1.0) :
-    return np.full((s1.shape[0], s2.shape[1]), bias)
+    return np.full((s1.size, s2.size), bias)
 
 def starts(s1, s2) :
-    M = np.zeros((s1.shape[0], s2.shape[1]))
+    M = np.zeros((s1.size, s2.size))
     M[0,...] = 1
     M[...,0] = 1
     return M
 
 def ends(s1, s2) :
-    M = np.zeros((s1.shape[0], s2.shape[1]))
-    M[(s1.shape[0]-1),...] = 1
-    M[...,(s2.shape[1]-1)] = 1
+    M = np.zeros((s1.size, s2.size))
+    M[(s1.size-1),...] = 1
+    M[...,(s2.size-1)] = 1
     return M
 
 def matches(s1, s2) :
-    return (s1 == s2).astype('i4')
+    return (s1 == s2)
 
 def digits(s1, s2) :
-    return (np.char.isdigit(s1) & np.char.isdigit(s2)).astype('i4')
+    return np.char.isdigit(s1) & np.char.isdigit(s2)
 
 
 
