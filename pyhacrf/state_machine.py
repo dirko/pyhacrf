@@ -193,7 +193,6 @@ class DefaultStateMachine(object):
 
 
 def _grow_independent_lattice(transitions, n_states, shape, unvisited_nodes):
-    print('missed')
     I, J = shape
     visited_nodes = set()
     lattice = []
