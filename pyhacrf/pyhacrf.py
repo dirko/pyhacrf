@@ -150,10 +150,14 @@ class Hacrf(object):
             Returns the probability of the sample for each class in the model,
             where classes are ordered as they are in ``self.classes_``.
         """
-        class_to_index = {class_name: index for index, class_name in enumerate(self.classes)}
-        return np.array(
-            [list(zip(*sorted(_Model(self._state_machine, x).predict(self.parameters).items(),
-                              key=lambda item: class_to_index[item[0]])))[1] for x in X])
+        parameters_T = np.ascontiguousarray(self.parameters.T)
+        predictions = [_Model(self._state_machine, x).predict(parameters_T)
+                       for x in X]
+        predictions = np.array([[probability
+                                 for _, probability
+                                 in sorted(prediction.items())]
+                                for prediction in predictions])
+        return predictions
 
     def predict(self, X):
         """Predict the class for X.
@@ -163,14 +167,16 @@ class Hacrf(object):
         Parameters
         ----------
         X : List of ndarrays, one for each training example.
-            Each training example's shape is (string1_len, string2_len, n_features, where
-            string1_len and string2_len are the length of the two training strings and n_features the
-            number of features.
+            Each training example's shape is (string1_len,
+            string2_len, n_features), where string1_len and
+            string2_len are the length of the two training strings and
+            n_features the number of features.
 
         Returns
         -------
         y : iterable of shape = [n_samples]
             The predicted classes.
+
         """
         return [self.classes[prediction.argmax()] for prediction in self.predict_proba(X)]
 
@@ -257,7 +263,8 @@ class _Model(object):
 
     def predict(self, parameters):
         """ Run forward algorithm to find the predicted distribution over classes. """
-        x_dot_parameters = np.dot(self.x, parameters.T)  # Pre-compute the dot product
+
+        x_dot_parameters = np.dot(self.x, parameters)  # Pre-compute the dot product
         alpha = forward_predict(self._lattice, x_dot_parameters, 
                                 self.state_machine.n_states)
         I, J, _ = self.x.shape
