@@ -114,10 +114,8 @@ class DefaultStateMachine(object):
         self.n_transitions = len(self._transitions)
         self.n_states = len(classes)
         self._base_lattice = self._independent_lattice(self._base_shape)
-        #self._base_lattice = np.asfortranarray(self._base_lattice)
 
-        self._lattice_limits = _lattice_limits(self._base_lattice,
-                                               self.BASE_LENGTH)
+        self._lattice_limits = self._lattice_ends()
 
     def _subset_independent_lattice(self, shape):
         I, J = shape
@@ -169,6 +167,30 @@ class DefaultStateMachine(object):
         lattice = self._subset_independent_lattice((I, J))
         return lattice
 
+    def _lattice_ends(self) :
+
+        lattice_limits = {}
+
+        lengths = np.arange(self.BASE_LENGTH)
+        lengths.reshape(1, -1)
+
+        I = self._base_lattice[..., 3:4] < lengths
+        for i in range(self.BASE_LENGTH) :
+            lattice_limits[i, None] = I[..., i].nonzero()[0]
+
+        J = self._base_lattice[..., 4:5] < lengths
+        for j in range(self.BASE_LENGTH) :
+            lattice_limits[None, j] = J[..., j].nonzero()[0]
+
+        IJ = np.expand_dims(I, axis=0).T & J
+
+        for i in range(self.BASE_LENGTH) :
+            for j in range(self.BASE_LENGTH) :
+                lattice_limits[i,j] = IJ[i, ..., j].nonzero()[0]
+
+        return lattice_limits
+
+
 
 def _grow_independent_lattice(transitions, n_states, shape, unvisited_nodes):
     I, J = shape
@@ -195,25 +217,3 @@ def _grow_independent_lattice(transitions, n_states, shape, unvisited_nodes):
 
     return lattice
 
-def _lattice_limits(base_lattice, base_length) :
-
-    lattice_limits = {}
-
-    lengths = np.arange(base_length)
-    lengths.reshape(1, -1)
-
-    I = base_lattice[..., 3:4] < lengths
-    for i in range(base_length) :
-        lattice_limits[i, None] = I[..., i].nonzero()[0]
-
-    J = base_lattice[..., 4:5] < lengths
-    for j in range(base_length) :
-        lattice_limits[None, j] = J[..., j].nonzero()[0]
-
-    IJ = np.expand_dims(I, axis=0).T & J
-        
-    for i in range(base_length) :
-        for j in range(base_length) :
-            lattice_limits[i,j] = IJ[i, ..., j].nonzero()[0]
-
-    return lattice_limits

@@ -67,7 +67,7 @@ cpdef ndarray[double, ndim=3] forward_predict(ndarray[long, ndim=2] lattice, nda
     old_i0, old_j0, old_s0 = -1, -1, -1
 
     for r in range(lattice.shape[0]):
-        i0, j0, s0 = lattice[r, 0], lattice[r, 1], lattice[r, 2], 
+        i0, j0, s0 = lattice[r, 0], lattice[r, 1], lattice[r, 2] 
         i1, j1, s1 = lattice[r, 3], lattice[r, 4], lattice[r, 5]
         edge_parameter_index = lattice[r, 6]
         if i0 != old_i0 or j0 != old_j0 or s0 != old_s0:
