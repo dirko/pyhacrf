@@ -6,10 +6,10 @@ from os import path
 # from Michael Hoffman's http://www.ebi.ac.uk/~hoffman/software/sunflower/
 class NumpyExtension(Extension):
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         from numpy import get_include
         from numpy.distutils.misc_util import get_info
-        kwargs = get_info('npymath')
+        kwargs.update(get_info('npymath'))
         kwargs['include_dirs'] += [get_include()]
 
         Extension.__init__(self, *args, **kwargs)
