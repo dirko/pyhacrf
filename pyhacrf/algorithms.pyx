@@ -5,9 +5,8 @@ cimport numpy as np
 from numpy import ndarray
 from numpy cimport ndarray
 from numpy.math cimport logaddexp, INFINITY as inf
-cdef extern from "math.h":
+cdef extern from "math.h" nogil :
     double exp(double x)
-
 
 cpdef dict forward(np.ndarray[long, ndim=2] lattice, np.ndarray[double, ndim=3] x_dot_parameters, long S):
     """ Helper to calculate the forward weights.  """
@@ -52,47 +51,50 @@ cpdef dict forward(np.ndarray[long, ndim=2] lattice, np.ndarray[double, ndim=3] 
 
     return alpha
 
-cpdef ndarray[double, ndim=3] forward_predict(ndarray[long, ndim=2] lattice, ndarray[double, ndim=3] x_dot_parameters, long S):
+cpdef double[:, :, ::1] forward_predict(long[:, ::1] lattice, 
+                                      double[:, :, ::1] x_dot_parameters, 
+                                      long S) :
     """ Helper to calculate the forward weights for prediction.  """
 
-    cdef ndarray[double, ndim=3] alpha = np.full_like(x_dot_parameters, -inf)
+    cdef double[:, :, ::1] alpha = x_dot_parameters.copy()
+    alpha[:] = -inf
 
     cdef unsigned int r 
     cdef unsigned int i0, j0, s0, i1, j1, s1, edge_parameter_index
-    cdef unsigned int I, J, s
 
-    cdef unsigned int old_i0, old_j0, old_s0 
-    cdef double edge_potential
+    cdef int old_s0 = -1
 
-    old_i0, old_j0, old_s0 = -1, -1, -1
+    cdef double edge_potential, source_node_potential
 
     for r in range(lattice.shape[0]):
-        i0, j0, s0 = lattice[r, 0], lattice[r, 1], lattice[r, 2] 
+        i0, j0, s0 = lattice[r, 0], lattice[r, 1], lattice[r, 2]
+
+        if s0 != old_s0 :
+            if i0 == 0 and j0 == 0:
+                source_node_potential = x_dot_parameters[i0, j0, s0]
+            else:
+                source_node_potential = (alpha[i0,j0,s0]
+                                         + x_dot_parameters[i0,j0,s0])
+            old_s0 = s0
+
         i1, j1, s1 = lattice[r, 3], lattice[r, 4], lattice[r, 5]
         edge_parameter_index = lattice[r, 6]
-        if i0 != old_i0 or j0 != old_j0 or s0 != old_s0:
-            if i0 == 0 and j0 == 0:
-                alpha[(i0, j0, s0)] = x_dot_parameters[i0, j0, s0]
-            else:
-                alpha[(i0, j0, s0)] += x_dot_parameters[i0, j0, s0]
-
-            old_i0, old_j0, old_s0 = i0, j0, s0
 
         edge_potential = (x_dot_parameters[i1, j1, edge_parameter_index]
-                              + alpha[(i0, j0, s0)])
-        alpha[(i1, j1, s1)] = logaddexp(alpha[(i1, j1, s1)], edge_potential)
+                          + source_node_potential)
 
-    I = x_dot_parameters.shape[0] - 1
-    J = x_dot_parameters.shape[1] - 1
+        alpha[i1, j1, s1] = logaddexp(alpha[i1, j1, s1], edge_potential)
+
+    cdef int I = alpha.shape[0] - 1
+    cdef int J = alpha.shape[1] - 1
 
     for s in range(S):
-        if I == J == 0:
-            alpha[(I, J, s)] = x_dot_parameters[I, J, s]
+        if I == J == 0 :
+            alpha[I, J, s] = x_dot_parameters[I, J, s]
         else:
-            alpha[(I, J, s)] += x_dot_parameters[I, J, s]
+            alpha[I, J, s] += x_dot_parameters[I, J, s]
         
     return alpha
-
 
 cpdef dict backward(ndarray[long, ndim=2] lattice,
                     ndarray[double, ndim=3] x_dot_parameters,
