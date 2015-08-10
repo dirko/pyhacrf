@@ -150,8 +150,10 @@ class Hacrf(object):
             Returns the probability of the sample for each class in the model,
             where classes are ordered as they are in ``self.classes_``.
         """
-        parameters_T = np.ascontiguousarray(self.parameters.T)
-        predictions = [_Model(self._state_machine, x).predict(parameters_T)
+        
+        parameters = np.ascontiguousarray(self.parameters.T)
+
+        predictions = [_Model(self._state_machine, x).predict(parameters)
                        for x in X]
         predictions = np.array([[probability
                                  for _, probability
@@ -263,10 +265,12 @@ class _Model(object):
 
     def predict(self, parameters):
         """ Run forward algorithm to find the predicted distribution over classes. """
+        x_dot_parameters = np.einsum('ijk,kl->ijl', self.x, parameters)
 
-        x_dot_parameters = np.dot(self.x, parameters)  # Pre-compute the dot product
         alpha = forward_predict(self._lattice, x_dot_parameters, 
                                 self.state_machine.n_states)
+        
+
         I, J, _ = self.x.shape
 
         class_Z = {}
