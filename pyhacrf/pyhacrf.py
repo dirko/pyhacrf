@@ -6,7 +6,7 @@
 import numpy as np
 import lbfgs
 from .algorithms import forward, backward
-from .algorithms import forward_predict
+from .algorithms import forward_predict, forward_max_predict
 from .algorithms import gradient, gradient_sparse, populate_sparse_features, sparse_multiply
 from .state_machine import DefaultStateMachine
 
@@ -32,6 +32,10 @@ class Hacrf(object):
     state_machine : Instance of `GeneralStateMachine` or `DefaultStateMachine`, optional (default=`DefaultStateMachine`)
         The state machine to use to generate the lattice.
 
+    viterbi : Boolean, optional (default=False).
+        Whether to use Viterbi (max-sum) decoding for predictions (not training)
+        instead of the default sum-product algorithm.
+
     References
     ----------
     See *A Conditional Random Field for Discriminatively-trained Finite-state String Edit Distance*
@@ -43,12 +47,14 @@ class Hacrf(object):
                  l2_regularization=0.0,
                  optimizer=None,
                  optimizer_kwargs=None,
-                 state_machine=None):
+                 state_machine=None,
+                 viterbi=False):
         self.parameters = None
         self.classes = None
         self.l2_regularization = l2_regularization
         self._optimizer = optimizer
         self._optimizer_kwargs = optimizer_kwargs
+        self.viterbi = viterbi
 
         self._optimizer_result = None
         self._state_machine = state_machine
@@ -153,7 +159,7 @@ class Hacrf(object):
         
         parameters = np.ascontiguousarray(self.parameters.T)
 
-        predictions = [_Model(self._state_machine, x).predict(parameters)
+        predictions = [_Model(self._state_machine, x).predict(parameters, self.viterbi)
                        for x in X]
         predictions = np.array([[probability
                                  for _, probability
@@ -263,13 +269,16 @@ class _Model(object):
                                  self.x, classes_to_ints[self.y], I, J, K)
         return ll, deriv
 
-    def predict(self, parameters):
+    def predict(self, parameters, viterbi):
         """ Run forward algorithm to find the predicted distribution over classes. """
         x_dot_parameters = np.einsum('ijk,kl->ijl', self.x, parameters)
 
-        alpha = forward_predict(self._lattice, x_dot_parameters, 
-                                self.state_machine.n_states)
-        
+        if not viterbi:
+            alpha = forward_predict(self._lattice, x_dot_parameters,
+                                    self.state_machine.n_states)
+        else:
+            alpha = forward_max_predict(self._lattice, x_dot_parameters,
+                                        self.state_machine.n_states)
 
         I, J, _ = self.x.shape
 

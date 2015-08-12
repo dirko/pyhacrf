@@ -96,6 +96,53 @@ cpdef double[:, :, ::1] forward_predict(long[:, ::1] lattice,
         
     return alpha
 
+
+cpdef double[:, :, ::1] forward_max_predict(long[:, ::1] lattice,
+                                            double[:, :, ::1] x_dot_parameters,
+                                            long S) :
+    """ Helper to calculate the forward max-sum weights for prediction.  """
+
+    cdef double[:, :, ::1] alpha = x_dot_parameters.copy()
+    alpha[:] = -inf
+
+    cdef unsigned int r
+    cdef unsigned int i0, j0, s0, i1, j1, s1, edge_parameter_index
+
+    cdef int old_s0 = -1
+
+    cdef double edge_potential, source_node_potential
+
+    for r in range(lattice.shape[0]):
+        i0, j0, s0 = lattice[r, 0], lattice[r, 1], lattice[r, 2]
+
+        if s0 != old_s0 :
+            if i0 == 0 and j0 == 0:
+                source_node_potential = x_dot_parameters[i0, j0, s0]
+            else:
+                source_node_potential = (alpha[i0,j0,s0]
+                                         + x_dot_parameters[i0,j0,s0])
+            old_s0 = s0
+
+        i1, j1, s1 = lattice[r, 3], lattice[r, 4], lattice[r, 5]
+        edge_parameter_index = lattice[r, 6]
+
+        edge_potential = (x_dot_parameters[i1, j1, edge_parameter_index]
+                          + source_node_potential)
+
+        alpha[i1, j1, s1] = max(alpha[i1, j1, s1], edge_potential)
+
+    cdef int I = alpha.shape[0] - 1
+    cdef int J = alpha.shape[1] - 1
+
+    for s in range(S):
+        if I == J == 0 :
+            alpha[I, J, s] = x_dot_parameters[I, J, s]
+        else:
+            alpha[I, J, s] += x_dot_parameters[I, J, s]
+
+    return alpha
+
+
 cpdef dict backward(ndarray[long, ndim=2] lattice,
                     ndarray[double, ndim=3] x_dot_parameters,
                     long I, long J, long S):
