@@ -135,6 +135,49 @@ class TestHacrf(unittest.TestCase):
         assert_array_almost_equal(actual_predictions, expected_predictions, 
                                   decimal=TEST_PRECISION)
 
+    def test_fit_predict_regularized_viterbi(self):
+        incorrect = ['helloooo', 'freshh', 'ffb', 'h0me', 'wonderin', 'relaionship', 'hubby', 'krazii', 'mite', 'tropic']
+        correct = ['hello', 'fresh', 'facebook', 'home', 'wondering', 'relationship', 'husband', 'crazy', 'might', 'topic']
+        training = zip(incorrect, correct)
+
+        fe = StringPairFeatureExtractor(match=True, numeric=True)
+        xf = fe.fit_transform(training)
+
+        model = Hacrf(l2_regularization=10.0, viterbi=True)
+        model.fit(xf, [0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
+        print(model.parameters)
+
+        expected_parameters = np.array([[-0.0569188, 0.07413339, 0.],
+                                        [0.00187709, -0.06377866, 0.],
+                                        [-0.01908823, 0.00586189, 0.],
+                                        [0.01721114, -0.00636556, 0.],
+                                        [0.01578279, 0.0078614, 0.],
+                                        [-0.0139057, -0.00862948, 0.],
+                                        [-0.00623241, 0.02937325, 0.],
+                                        [0.00810951, -0.01774676, 0.]])
+        assert_array_almost_equal(model.parameters, expected_parameters,
+                                  decimal=TEST_PRECISION)
+
+        expected_probas = np.array([[0.56394611, 0.43605389],
+                                    [0.52977205, 0.47022795],
+                                    [0.4751729, 0.5248271],
+                                    [0.51183761, 0.48816239],
+                                    [0.48608081, 0.51391919],
+                                    [0.4986367, 0.5013633],
+                                    [0.46947222, 0.53052778],
+                                    [0.43233544, 0.56766456],
+                                    [0.47463002, 0.52536998],
+                                    [0.51265109, 0.48734891]])
+        actual_predict_probas = model.predict_proba(xf)
+        print(actual_predict_probas)
+        assert_array_almost_equal(actual_predict_probas, expected_probas,
+                                  decimal=TEST_PRECISION)
+
+        expected_predictions = np.array([0, 0, 1, 0, 1, 1, 1, 1, 1, 0])
+        actual_predictions = model.predict(xf)
+        assert_array_almost_equal(actual_predictions, expected_predictions,
+                                  decimal=TEST_PRECISION)
+
 
 class TestModel(unittest.TestCase):
     def test_build_lattice(self):
