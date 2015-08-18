@@ -5,6 +5,7 @@
 
 import numpy as np
 import functools
+import itertools
 
 class PairFeatureExtractor(object):
     """Extract features from sequence pairs.
@@ -208,16 +209,24 @@ class StringPairFeatureExtractor(PairFeatureExtractor):
                            matches,
                            digits]
 
-        self._binary_features = [feature for feature, active in zip(binary_features, binary_features_active) if active]
+        self._binary_features = [feature 
+                                 for feature, active 
+                                 in zip(binary_features, 
+                                        binary_features_active)
+                                 if active]
         self._sparse_features = []
         if transition:
             characters_to_index = {character: index for index, character in enumerate(self.CHARACTERS)}
-            self._sparse_features.append(((lambda i, j, s1, s2, chars_to_index=characters_to_index:
-                                           chars_to_index[s2[j].lower()] +
-                                           chars_to_index[s1[i].lower()] * len(chars_to_index)),
+            curried_charIndex = functools.partial(charIndex,
+                                                  char2index = characters_to_index)
+            self._sparse_features.append((curried_charIndex, 
                                           len(characters_to_index) ** 2))
 
 
+def charIndex(i, j, s1, s2, char2index=None) :
+    char_i, char_j = s1[i].lower(), s2[j].lower()
+    index = char2index[char_j] + char2index[char_i] * len(char2index)
+    return index
 
 def biases(s1, s2, bias=1.0) :
     return np.full((s1.size, s2.size), bias)
