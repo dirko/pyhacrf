@@ -104,7 +104,7 @@ class Hacrf(object):
                 ll += dll
                 gradient += dgradient
 
-            parameters_without_bias = np.array(parameters)  # exclude the bias parameters from being regularized
+            parameters_without_bias = np.array(parameters, dtype='float64')  # exclude the bias parameters from being regularized
             parameters_without_bias[0] = 0
             ll -= self.l2_regularization * np.dot(parameters_without_bias.T, parameters_without_bias)
             gradient = gradient.flatten() - 2.0 * self.l2_regularization * parameters_without_bias
