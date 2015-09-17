@@ -259,7 +259,7 @@ class _Model(object):
         beta = self._backward(x_dot_parameters)
         classes_to_ints = {k: i for i, k in enumerate(set(self.states_to_classes.values()))}
         states_to_classes = np.array([classes_to_ints[self.states_to_classes[state]]
-                                      for state in range(max(self.states_to_classes.keys()) + 1)])
+                                      for state in range(max(self.states_to_classes.keys()) + 1)], dtype='int64')
         if not isinstance(self.sparse_x, str):
             ll, deriv = gradient_sparse(alpha, beta, parameters, states_to_classes,
                                         self.sparse_x[0], self.sparse_x[1], classes_to_ints[self.y],
