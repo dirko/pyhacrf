@@ -62,7 +62,6 @@ Example
     >  [ 0.05438812  0.94561188]
     >  [ 0.02641275  0.97358725]]
 
-
 Dependencies
 ------------
 
@@ -84,7 +83,6 @@ or from pypi:
 
     pip install pyhacrf
 
-
 Developing
 ----------
 Clone from repository, then
@@ -94,6 +92,5 @@ Clone from repository, then
     pip install -r requirements-dev.txt
     cython pyhacrf/*.pyx
     python setup.py install
-
 
 To deploy to pypi, make sure you have compiled the *.pyx files to *.c
