@@ -84,7 +84,7 @@ class GeneralStateMachine(object):
 
         # Squash list
         lattice = [edge for edge in reversed_list if len(edge) > 3]
-        return np.array(lattice)
+        return np.array(lattice, dtype='int64')
 
 
 class DefaultStateMachine(object):
@@ -158,7 +158,7 @@ class DefaultStateMachine(object):
         lattice += _grow_independent_lattice(self._transitions, 
                                              self.n_states, (I, J), 
                                              unvisited_nodes)
-        lattice = np.array(sorted(lattice), dtype=int)
+        lattice = np.array(sorted(lattice), dtype='int64')
         return lattice
 
     def build_lattice(self, x):

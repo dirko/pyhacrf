@@ -134,7 +134,7 @@ class PairFeatureExtractor(object):
         K = (len(self._binary_features) 
              + sum(num_feats for _, num_feats in self._sparse_features))
 
-        feature_array = np.zeros((array1.size, array2.size, K))
+        feature_array = np.zeros((array1.size, array2.size, K), dtype='float64')
 
         for k, feature_function in enumerate(self._binary_features):
             feature_array[..., k] = feature_function(array1, array2)
