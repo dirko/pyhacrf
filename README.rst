@@ -83,3 +83,17 @@ or from pypi:
 ::
 
     pip install pyhacrf
+
+
+Developing
+----------
+Clone from repository, then
+
+::
+
+    pip install -r requirements-dev.txt
+    cython pyhacrf/*.pyx
+    python setup.py install
+
+
+To deploy to pypi, make sure you have compiled the *.pyx files to *.c
