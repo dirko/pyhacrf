@@ -93,4 +93,4 @@ Clone from repository, then
     cython pyhacrf/*.pyx
     python setup.py install
 
-To deploy to pypi, make sure you have compiled the *.pyx files to *.c
+To deploy to pypi, make sure you have compiled the \*.pyx files to \*.c
